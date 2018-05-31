@@ -15,6 +15,7 @@ class Layer2Switch(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(Layer2Switch, self).__init__(*args, **kwargs)
 
+
     ''' This is called when Ryu receives an OpenFlow packet_in message.
         The trick is 'set_ev_cls' decorator. This decorator tells Ryu when
         the decorated function should be called.
