@@ -19,7 +19,6 @@ An OpenFlow 1.0 L2 learning switch implementation.
 Isadora Possebon
 """
 
-# run: ryu-manager sp.py --observe-links
 
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -34,7 +33,6 @@ from ryu.lib.packet import ether_types
 from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
 
-import networkx as nx
 
 class SimpleSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
@@ -42,7 +40,6 @@ class SimpleSwitch(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
-        self.net=nx.DiGraph()
 
 
     """
@@ -98,31 +95,12 @@ class SimpleSwitch(app_manager.RyuApp):
         self.mac_to_port[datapath_id][src_mac_address] = msg.in_port
 
 
-        """ --- Shortest path --- """
-
-        if src not in self.net: # Aprende endereço MAC
-            self.net.add_node(src) # Add a node to the graph
-            self.net.add_edge(src, dpid) # Add a link from the node to it's edge switch
-            # Add link from switch to node and make sure you are identifying the output port.
-            self.net.add_edge(dpid, src, {'port':msg.in_port})
-
-        if dst in self.net:
-            path = nx.shortest_path(self.net, src, dst) # get shortest path
-            next = path[path.index(dpid)+1] # get next hop
-            out_port = self.net[dpid][next]['port'] # get output port
+        if dst_mac_address in self.mac_to_port[datapath_id]:
+            # Se já conhece/sabe quem é o host de destino da mensagem, envia para a porta mapeada.
+            out_port = self.mac_to_port[datapath_id][dst_mac_address]
         else:
-            # If destination MAC is unknown then flood it
+            # Se não conhece, flooda a rede (envia por todas as portas do switches)
             out_port = ofproto.OFPP_FLOOD
-
-        """ --- Fim do Shortest path --- """
-
-        # Sem shortest path
-        # if dst_mac_address in self.mac_to_port[datapath_id]:
-        #     # Se já conhece/sabe quem é o host de destino da mensagem, envia para a porta mapeada.
-        #     out_port = self.mac_to_port[datapath_id][dst_mac_address]
-        # else:
-        #     # Se não conhece, flooda a rede (envia por todas as portas do switches)
-        #     out_port = ofproto.OFPP_FLOOD
 
         actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
 
@@ -157,52 +135,3 @@ class SimpleSwitch(app_manager.RyuApp):
             self.logger.info("port modified %s", port_no)
         else:
             self.logger.info("Illeagal port state %s %s", port_no, reason)
-
-
-    # Network topology #
-    """
-    The event EventSwitchEnter will trigger the activation of get_topology_data().
-    Next we call get_switch() to get the list of objects Switch, and get_link()
-    to get the list of objects Link. This objects are defined in the
-    topology.switches file. Then, we build a list with all the switches ([switches])
-    and next a list with all the links [(srcNode, dstNode, port)]. Notice that
-    we also get the port from the source node that arrives at the destination
-    node, as that information will be necessary later during the forwarding step.
-    """
-    @set_ev_cls(event.EventSwitchEnter)
-    def get_topology_data(self, ev):
-        switch_list = get_switch(self.topology_api_app, None)
-        switches=[switch.dp.id for switch in switch_list]
-        links_list = get_link(self.topology_api_app, None)
-        links=[(link.src.dpid,link.dst.dpid,{'port':link.src.port_no}) for link in links_list]
-
-        print(links)
-        print(switches)
-
-        self.net.add_nodes_from(switches)
-        self.net.add_edges_from(links)
-
-
-    """
-    * Shortest Path forwarding
-    If source MAC is unknown then learn it
-    If destination MAC is unknown then flood it.
-    If destination MAC is known then:
-    get shortest path
-    get next hop in path
-    get output port for next hop
-    """
-    def shortest_path():
-        if src not in self.net: # Learn it
-            self.net.add_node(src) # Add a node to the graph
-            self.net.add_edge(src, dpid) # Add a link from the node to it's edge switch
-            # Add link from switch to node and make sure you are identifying the output port.
-            self.net.add_edge(dpid, src, {'port':msg.in_port})
-
-        if dst in self.net:
-            path = nx.shortest_path(self.net, src, dst) # get shortest path
-            next = path[path.index(dpid)+1] # get next hop
-            out_port = self.net[dpid][next]['port'] # get output port
-        else:
-            # If destination MAC is unknown then flood it
-            out_port = ofproto.OFPP_FLOOD
