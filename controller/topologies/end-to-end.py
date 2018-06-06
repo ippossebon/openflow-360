@@ -2,6 +2,9 @@
 
 
 """Custom topology example
+
+!!! Contains loops !!!
+
 MAC,IP, Controller, CLI stuff configured
 # run RYU SDN STP Application for this topology
 ryu-manager ryu.app.simple_switch_stp
