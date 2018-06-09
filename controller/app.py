@@ -150,10 +150,9 @@ class SimpleSwitch(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
 
-        print('EVENT IN')
-        print(ev)
-        print(msg)
-        print(pkt)
+        print('MENSAGE TYPE::')
+        print(type(msg))
+        in_port = msg.in_port
 
 
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
