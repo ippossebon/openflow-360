@@ -27,22 +27,44 @@ from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_0
 from ryu.lib.mac import haddr_to_bin
-from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import ether_types
+from ryu.lib.packet import ethernet, ether_types, arp, packet, ipv4
 
 from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
 
 import networkx as nx
 
+'''
+switches_arp_table:
+{
+    1: {
+        in_ports: [],
+        ip_adds: [],
+        last_mile: boolean
+    },
+    2: {
+        interfaces: [],
+        ip_adds: [],
+        last_mile: boolean
+    }
+}
+
+'''
+
 class SimpleSwitch(app_manager.RyuApp):
-    OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
+    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+        self.switches = []
+
+        self.switches_arp_table = {}
+
         self.net=nx.DiGraph()
+        self.stp = nx.Graph()
+
+        self.logger.setLevel(logging.DEBUG)
 
 
     """
@@ -61,8 +83,53 @@ class SimpleSwitch(app_manager.RyuApp):
             command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
             priority=ofproto.OFP_DEFAULT_PRIORITY,
             flags=ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
+
         datapath.send_msg(mod)
 
+
+
+    def arp_packet_in(self, ev):
+        ''' Para cada host descoberto na rede, são armazenadas as seguintes informações:
+            ○ Interfaces pelas é possível alcançá-lo
+            ○ Endereços IP conhecidos (que estão na tabela ARP do host)
+            ○ Última milha (booleano), indicando se o host está conectado diretamente ao
+            switch em questão.
+
+            Quando um novo ARP chega em um switch, essa tabela é consultada e
+            complementada com informações novas.
+            ○ Esse comportamento garante que ARP Requests não sejam reencaminhados infinitamente
+            ● Entradas nessa tabela são gerenciadas por um tempo de timeout. Quando esse tempo é excedido, a entrada é deletada.
+        '''
+        switch = ev.switch
+        self.switches.append(switch.dp)
+        dpid = switch.dp.id
+        in_port = ev.msg.match['in_port']
+
+        ip_packet = pkt.get_protocol(ipv4.ipv4)
+        src_ip_address = ip_packet.src
+        has_new_info = False
+
+        if !switches_arp_table.has_key(dpid):
+            # Inicializa informações do switch
+            self.switches_arp_table[dpid] = {}
+            self.switches_arp_table[dpid]['in_ports'] = []
+            self.switches_arp_table[dpid]['ip_addresses'] = []
+            self.switches_arp_table[dpid]['direct_connection'] = True # indica se o host está conectado diretamente ao switch
+            has_new_info = True
+
+        # Preenche a tabela com as informações
+        if in_port not in self.switches_arp_table[dpid]['in_ports']:
+            self.switches_arp_table[dpid]['in_ports'].append(in_port)
+            has_new_info = True
+
+        if src_ip_address not in self.switches_arp_table[dpid]['ip_addresses']:
+            src_ip_address not in self.switches_arp_table[dpid]['ip_addresses'].append(src_ip_address)
+            has_new_info = True
+
+        # TODO: rever..
+        self.switches_arp_table[dpid]['direct_connection'] = True
+
+        return has_new_info
 
     """
     Lógica da aplicação: o que acontece cada vez que um pacote chega ao controlador?
@@ -80,6 +147,8 @@ class SimpleSwitch(app_manager.RyuApp):
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        in_port = msg.match['in_port']
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
@@ -87,10 +156,20 @@ class SimpleSwitch(app_manager.RyuApp):
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
             # ignora pacotes LLDP (Link descovery)
             return
+
+
+        if eth.ethertype == ether_types.ETH_TYPE_ARP:
+            has_new_info = self.arp_packet_in(ev)
+
+            # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
+            if !has_new_info:
+                return
+
+
         dst_mac_address = eth.dst
         src_mac_address = eth.src
-
         datapath_id = datapath.id
+
         self.mac_to_port.setdefault(datapath_id, {})
 
         self.logger.info("packet in %s %s %s %s", datapath_id, src_mac_address, dst_mac_address, msg.in_port)
@@ -100,13 +179,13 @@ class SimpleSwitch(app_manager.RyuApp):
 
 
         """ --- Shortest path --- """
-
         if src not in self.net: #
             self.net.add_node(src) # Add a node to the graph
             self.net.add_edge(src, dpid) # Add a link from the node to it's edge switch
             # Add link from switch to node and make sure you are identifying the output port.
             self.net.add_edge(dpid, src, {'port':msg.in_port})
 
+         # Se já conhece/sabe quem é o host de destino da mensagem, envia para a porta mapeada.
         if dst in self.net:
             path = nx.shortest_path(self.net, src, dst) # get shortest path
             next = path[path.index(dpid)+1] # get next hop
@@ -116,14 +195,6 @@ class SimpleSwitch(app_manager.RyuApp):
             out_port = ofproto.OFPP_FLOOD
 
         """ --- Fim do Shortest path --- """
-
-        #
-        # if dst_mac_address in self.mac_to_port[datapath_id]:
-        #     # Se já conhece/sabe quem é o host de destino da mensagem, envia para a porta mapeada.
-        #     out_port = self.mac_to_port[datapath_id][dst_mac_address]
-        # else:
-        #     # Se não conhece, flooda a rede (envia por todas as portas do switches)
-        #     out_port = ofproto.OFPP_FLOOD
 
         actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
 
@@ -171,18 +242,31 @@ class SimpleSwitch(app_manager.RyuApp):
     node, as that information will be necessary later during the forwarding step.
     """
     @set_ev_cls(event.EventSwitchEnter)
-    def get_topology_data(self, ev):
-        switch_list = get_switch(self.topology_api_app, None)
-        switches=[switch.dp.id for switch in switch_list]
-        links_list = get_link(self.topology_api_app, None)
-        links=[(link.src.dpid,link.dst.dpid,{'port':link.src.port_no}) for link in links_list]
+    def add_switch(self, ev):
+        switch = ev.switch
+        self.switches.append(switch.dp)
+        dpid = switch.dp.id
 
-        print(links)
-        print(switches)
+        # Adding switch node
+        if dpid == 0:
+            self.net.add_node('0', n_type='switch', has_host='false')
+        else:
+            self.net.add_node(dpid, n_type='switch', has_host='false')
 
-        self.net.add_nodes_from(switches)
-        self.net.add_edges_from(links)
 
+    @set_ev_cls(event.EventLinkAdd, MAIN_DISPATCHER)
+    def link_add_handler(self, ev):
+        link = ev.link
+        src_dpid = link.src.dpid
+        dst_dpid = link.dst.dpid
+        src_port_no = link.src.port_no
+        dst_port_no = link.dst.port_no
+
+        # Adding a edge from source datapath to destination datapath
+        # UpLink
+        self.net.add_edge(src_dpid, dst_dpid, {'port': src_port_no})
+        # DownLink
+        self.net.add_edge(dst_dpid, src_dpid, {'port': dst_port_no})
 
     """
     * Shortest Path forwarding
