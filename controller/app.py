@@ -146,10 +146,15 @@ class SimpleSwitch(app_manager.RyuApp):
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        in_port = msg.match['in_port']
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
+
+        print('EVENT IN')
+        print(ev)
+        print(msg)
+        print(pkt)
+
 
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
             # ignora pacotes LLDP (Link descovery)
@@ -167,6 +172,7 @@ class SimpleSwitch(app_manager.RyuApp):
         dst_mac_address = eth.dst
         src_mac_address = eth.src
         datapath_id = datapath.id
+        in_port = msg.match['in_port']
 
         self.mac_to_port.setdefault(datapath_id, {})
 
