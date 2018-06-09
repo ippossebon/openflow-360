@@ -109,7 +109,7 @@ class SimpleSwitch(app_manager.RyuApp):
         src_ip_address = ip_packet.src
         has_new_info = False
 
-        if !switches_arp_table.has_key(dpid):
+        if not switches_arp_table.has_key(dpid):
             # Inicializa informações do switch
             self.switches_arp_table[dpid] = {}
             self.switches_arp_table[dpid]['in_ports'] = []
