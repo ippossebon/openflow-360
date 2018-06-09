@@ -101,7 +101,7 @@ class SimpleSwitch(app_manager.RyuApp):
         switch = ev.switch
         self.switches.append(switch.dp)
         dpid = switch.dp.id
-        in_port = ev.msg.match['in_port']
+        in_port = ev.msg.in_port
 
         ip_packet = pkt.get_protocol(ipv4.ipv4)
         src_ip_address = ip_packet.src
@@ -150,10 +150,10 @@ class SimpleSwitch(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
 
-        print('MENSAGE TYPE::')
-        print(type(msg))
         in_port = msg.in_port
 
+        print(ev)
+        print('In port: %d', in_port)
 
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
             # ignora pacotes LLDP (Link descovery)
