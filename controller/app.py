@@ -64,8 +64,6 @@ class SimpleSwitch(app_manager.RyuApp):
         self.net=nx.DiGraph()
         self.stp = nx.Graph()
 
-        self.logger.setLevel(logging.DEBUG)
-
 
     """
     Instala fluxo no switch. Isto é, envia mensagem de FlowMod.
