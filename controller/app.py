@@ -162,7 +162,7 @@ class SimpleSwitch(app_manager.RyuApp):
             has_new_info = self.arp_packet_in(ev)
 
             # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
-            if !has_new_info:
+            if not has_new_info:
                 return
 
 
