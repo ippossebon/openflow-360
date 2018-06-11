@@ -98,14 +98,17 @@ class SimpleSwitch(app_manager.RyuApp):
             ○ Esse comportamento garante que ARP Requests não sejam reencaminhados infinitamente
             ● Entradas nessa tabela são gerenciadas por um tempo de timeout. Quando esse tempo é excedido, a entrada é deletada.
         '''
-        switch = ev.switch
-        self.switches.append(switch.dp)
+        print(ev)
+        
         dpid = switch.dp.id
         in_port = ev.msg.in_port
 
         ip_packet = pkt.get_protocol(ipv4.ipv4)
         src_ip_address = ip_packet.src
         has_new_info = False
+
+        eth = pkt.get_protocol(ethernet.ethernet)
+        switch_mac_address = eth.src
 
         if not switches_arp_table.has_key(dpid):
             # Inicializa informações do switch
