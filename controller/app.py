@@ -104,14 +104,9 @@ class SimpleSwitch(app_manager.RyuApp):
         switch_mac_address = eth.src
 
         in_port = ev.msg.in_port
-
-        print('** MESSAGE:')
-        print(msg.data)
-        print(switch_mac_address)
         has_new_info = False
 
-
-        if not switches_arp_table.has_key(switch_mac_address):
+        if not self.switches_arp_table.has_key(switch_mac_address):
             # Inicializa informações do switch
             self.switches_arp_table[switch_mac_address] = {}
             self.switches_arp_table[switch_mac_address]['in_ports'] = []
@@ -182,7 +177,8 @@ class SimpleSwitch(app_manager.RyuApp):
 
         self.mac_to_port.setdefault(datapath_id, {})
 
-        self.logger.info("packet in %s %s %s %s", datapath_id, src_mac_address, dst_mac_address, msg.in_port)
+        self.logger.info("packet in DATAPATH ID: %s src_mac_address: %s %s dst_mac_address: %s",
+            datapath_id, src_mac_address, dst_mac_address, msg.in_port)
 
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[datapath_id][src_mac_address] = msg.in_port
