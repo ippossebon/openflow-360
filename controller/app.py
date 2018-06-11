@@ -105,8 +105,9 @@ class SimpleSwitch(app_manager.RyuApp):
 
         in_port = ev.msg.in_port
 
-        ip_packet = pkt.get_protocol(ipv4.ipv4)
-        src_ip_address = ip_packet.src
+        print('** MESSAGE:')
+        print(msg)
+        print('switch_mac_address')
         has_new_info = False
 
 
