@@ -98,37 +98,37 @@ class SimpleSwitch(app_manager.RyuApp):
             ○ Esse comportamento garante que ARP Requests não sejam reencaminhados infinitamente
             ● Entradas nessa tabela são gerenciadas por um tempo de timeout. Quando esse tempo é excedido, a entrada é deletada.
         '''
-        print(ev)
-        
-        dpid = switch.dp.id
+        msg = ev.msg
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        switch_mac_address = eth.src
+
         in_port = ev.msg.in_port
 
         ip_packet = pkt.get_protocol(ipv4.ipv4)
         src_ip_address = ip_packet.src
         has_new_info = False
 
-        eth = pkt.get_protocol(ethernet.ethernet)
-        switch_mac_address = eth.src
 
-        if not switches_arp_table.has_key(dpid):
+        if not switches_arp_table.has_key(switch_mac_address):
             # Inicializa informações do switch
-            self.switches_arp_table[dpid] = {}
-            self.switches_arp_table[dpid]['in_ports'] = []
-            self.switches_arp_table[dpid]['ip_addresses'] = []
-            self.switches_arp_table[dpid]['direct_connection'] = True # indica se o host está conectado diretamente ao switch
+            self.switches_arp_table[switch_mac_address] = {}
+            self.switches_arp_table[switch_mac_address]['in_ports'] = []
+            self.switches_arp_table[switch_mac_address]['ip_addresses'] = []
+            self.switches_arp_table[switch_mac_address]['direct_connection'] = True # indica se o host está conectado diretamente ao switch
             has_new_info = True
 
         # Preenche a tabela com as informações
-        if in_port not in self.switches_arp_table[dpid]['in_ports']:
-            self.switches_arp_table[dpid]['in_ports'].append(in_port)
+        if in_port not in self.switches_arp_table[switch_mac_address]['in_ports']:
+            self.switches_arp_table[switch_mac_address]['in_ports'].append(in_port)
             has_new_info = True
 
-        if src_ip_address not in self.switches_arp_table[dpid]['ip_addresses']:
-            src_ip_address not in self.switches_arp_table[dpid]['ip_addresses'].append(src_ip_address)
+        if src_ip_address not in self.switches_arp_table[switch_mac_address]['ip_addresses']:
+            src_ip_address not in self.switches_arp_table[switch_mac_address]['ip_addresses'].append(src_ip_address)
             has_new_info = True
 
         # TODO: rever..
-        self.switches_arp_table[dpid]['direct_connection'] = True
+        self.switches_arp_table[switch_mac_address]['direct_connection'] = True
 
         return has_new_info
 
@@ -168,7 +168,10 @@ class SimpleSwitch(app_manager.RyuApp):
 
             # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
             if not has_new_info:
+                print('>> Sem novas informações com este pacote ARP')
                 return
+            else:
+                print('>> Pacote ARP trouxe novas informações')
 
 
         dst_mac_address = eth.dst
