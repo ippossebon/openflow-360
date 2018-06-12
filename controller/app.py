@@ -101,7 +101,10 @@ class SimpleSwitch(app_manager.RyuApp):
         msg = ev.msg
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        switch_mac_address = eth.src
+        arp_packet = pkt.get_protocol(arp.arp)
+
+        switch_mac_address = arp_packet.src_mac
+        switch_ip = arp_packet.src_ip
 
         in_port = ev.msg.in_port
         has_new_info = False
@@ -119,8 +122,8 @@ class SimpleSwitch(app_manager.RyuApp):
             self.switches_arp_table[switch_mac_address]['in_ports'].append(in_port)
             has_new_info = True
 
-        if src_ip_address not in self.switches_arp_table[switch_mac_address]['ip_addresses']:
-            src_ip_address not in self.switches_arp_table[switch_mac_address]['ip_addresses'].append(src_ip_address)
+        if switch_ip not in self.switches_arp_table[switch_mac_address]['ip_addresses']:
+            switch_ip not in self.switches_arp_table[switch_mac_address]['ip_addresses'].append(switch_ip)
             has_new_info = True
 
         # TODO: rever..
