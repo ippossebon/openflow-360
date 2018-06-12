@@ -106,7 +106,7 @@ class SimpleSwitch(app_manager.RyuApp):
         in_port = ev.msg.in_port
         has_new_info = False
 
-        if not self.switches_arp_table.has_key(switch_mac_address):
+        if switch_mac_address not in self.switches_arp_table:
             # Inicializa informações do switch
             self.switches_arp_table[switch_mac_address] = {}
             self.switches_arp_table[switch_mac_address]['in_ports'] = []
