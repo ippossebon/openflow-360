@@ -88,7 +88,6 @@ class SimpleSwitch(app_manager.RyuApp):
         datapath.send_msg(mod)
 
 
-
     def arp_packet_in(self, ev):
         ''' Para cada host descoberto na rede, são armazenadas as seguintes informações:
             ○ Interfaces pelas é possível alcançá-lo
@@ -182,7 +181,7 @@ class SimpleSwitch(app_manager.RyuApp):
 
         self.mac_to_port.setdefault(datapath_id, {})
 
-        self.logger.info("packet in DATAPATH ID: %s src_mac_address: %s %s dst_mac_address: %s",
+        self.logger.info("packet in DATAPATH ID: %s src_mac_address: %s dst_mac_address: %s in_port: %s",
             datapath_id, src_mac_address, dst_mac_address, msg.in_port)
 
         # learn a mac address to avoid FLOOD next time.
@@ -209,9 +208,16 @@ class SimpleSwitch(app_manager.RyuApp):
 
         actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
 
+        print('>> datapath type = ', type(datapath))
+        print('>> in_port type = ', type(in_port))
+        print('>> dst_mac_address type = ', type(dst_mac_address))
+        print('>> src_mac_address type = ', type(src_mac_address))
+        print('>> actions type = ', type(actions))
+
+
         # Instala fluxo no switch para evitar voltar ao controlador da próxima vez
         if out_port != ofproto.OFPP_FLOOD:
-            self.add_flow(datapath, msg.in_port, dst_mac_address, src_mac_address, actions)
+            self.add_flow(datapath, in_port, dst_mac_address, src_mac_address, actions)
 
         # o que isso faz??????
         data = None
