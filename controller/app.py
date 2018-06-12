@@ -123,12 +123,13 @@ class SimpleSwitch(app_manager.RyuApp):
         # Preenche a tabela com as informações
         if in_port not in self.switches_arp_table[switch_mac_address]['in_ports']:
             self.switches_arp_table[switch_mac_address]['in_ports'].append(in_port)
-            print('>> Adicionou porta na tabela')
+            self.logger.info('> Adicionou porta na tabela')
+
             has_new_info = True
 
         if switch_ip not in self.switches_arp_table[switch_mac_address]['ip_addresses']:
             self.switches_arp_table[switch_mac_address]['ip_addresses'].append(switch_ip)
-            print('>> Adicionou ip na tabela')
+            self.logger.info('> Adicionou ip na tabela')
 
             has_new_info = True
 
@@ -158,31 +159,26 @@ class SimpleSwitch(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
 
-        in_port = msg.in_port
-
-        print(ev)
-        print('In port: %d', in_port)
 
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
             # ignora pacotes LLDP (Link descovery)
             return
-
 
         if eth.ethertype == ether_types.ETH_TYPE_ARP:
             has_new_info = self.arp_packet_in(ev)
 
             # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
             if not has_new_info:
-                print('>> Sem novas infos com este pacote ARP')
+                self.logger.info('> Sem novas infos com este pacote ARP')
                 return
             else:
-                print('>> Pacote ARP trouxe novas infos')
+                self.logger.info('> Pacote ARP trouxe novas infos')
 
 
         dst_mac_address = eth.dst
         src_mac_address = eth.src
         datapath_id = datapath.id
-        in_port = msg.match['in_port']
+        in_port = msg.in_port
 
         self.mac_to_port.setdefault(datapath_id, {})
 
@@ -194,17 +190,17 @@ class SimpleSwitch(app_manager.RyuApp):
 
 
         """ --- Shortest path --- """
-        if src not in self.net: #
-            self.net.add_node(src) # Add a node to the graph
-            self.net.add_edge(src, dpid) # Add a link from the node to it's edge switch
+        if src_mac_address not in self.net: #
+            self.net.add_node(src_mac_address) # Add a node to the graph
+            self.net.add_edge(src_mac_address, datapath_id) # Add a link from the node to it's edge switch
             # Add link from switch to node and make sure you are identifying the output port.
-            self.net.add_edge(dpid, src, {'port':msg.in_port})
+            self.net.add_edge(datapath_id, src_mac_address, {'port':msg.in_port})
 
          # Se já conhece/sabe quem é o host de destino da mensagem, envia para a porta mapeada.
-        if dst in self.net:
-            path = nx.shortest_path(self.net, src, dst) # get shortest path
-            next = path[path.index(dpid)+1] # get next hop
-            out_port = self.net[dpid][next]['port'] # get output port
+        if dst_mac_address in self.net:
+            path = nx.shortest_path(self.net, src_mac_address, dst_mac_address) # get shortest path
+            next = path[path.index(datapath_id)+1] # get next hop
+            out_port = self.net[datapath_id][next]['port'] # get output port
         else:
             # If destination MAC is unknown then flood it
             out_port = ofproto.OFPP_FLOOD
