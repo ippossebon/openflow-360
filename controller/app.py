@@ -194,7 +194,7 @@ class SimpleSwitch(app_manager.RyuApp):
             self.net.add_node(src_mac_address) # Add a node to the graph
             self.net.add_edge(src_mac_address, datapath_id) # Add a link from the node to it's edge switch
             # Add link from switch to node and make sure you are identifying the output port.
-            self.net.add_edge(datapath_id, src_mac_address, {'port':msg.in_port})
+            self.net.add_edge(datapath_id, src_mac_address, port={'port':msg.in_port})
 
          # Se já conhece/sabe quem é o host de destino da mensagem, envia para a porta mapeada.
         if dst_mac_address in self.net:
@@ -275,9 +275,9 @@ class SimpleSwitch(app_manager.RyuApp):
 
         # Adding a edge from source datapath to destination datapath
         # UpLink
-        self.net.add_edge(src_dpid, dst_dpid, {'port': src_port_no})
+        self.net.add_edge(src_dpid, dst_dpid, port={'port': src_port_no})
         # DownLink
-        self.net.add_edge(dst_dpid, src_dpid, {'port': dst_port_no})
+        self.net.add_edge(dst_dpid, src_dpid, port={'port': dst_port_no})
 
     """
     * Shortest Path forwarding
@@ -293,7 +293,7 @@ class SimpleSwitch(app_manager.RyuApp):
             self.net.add_node(src) # Add a node to the graph
             self.net.add_edge(src, dpid) # Add a link from the node to it's edge switch
             # Add link from switch to node and make sure you are identifying the output port.
-            self.net.add_edge(dpid, src, {'port':msg.in_port})
+            self.net.add_edge(dpid, src, port={'port':msg.in_port})
 
         if dst in self.net:
             path = nx.shortest_path(self.net, src, dst) # get shortest path
