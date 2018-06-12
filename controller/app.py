@@ -170,10 +170,10 @@ class SimpleSwitch(app_manager.RyuApp):
 
             # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
             if not has_new_info:
-                print('>> Sem novas informações com este pacote ARP')
+                print('>> Sem novas infos com este pacote ARP')
                 return
             else:
-                print('>> Pacote ARP trouxe novas informações')
+                print('>> Pacote ARP trouxe novas infos')
 
 
         dst_mac_address = eth.dst
