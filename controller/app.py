@@ -213,7 +213,7 @@ class SimpleSwitch(app_manager.RyuApp):
         print('>> dst_mac_address type = ', type(dst_mac_address))
         print('>> src_mac_address type = ', type(src_mac_address))
         print('>> actions type = ', type(actions))
-        print('************* nx.version = ', nx.version)
+        print('************* nx.version = ', nx.__version__)
 
         # Instala fluxo no switch para evitar voltar ao controlador da próxima vez
         if out_port != ofproto.OFPP_FLOOD:
