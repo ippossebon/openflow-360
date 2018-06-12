@@ -27,11 +27,8 @@ class SingleSwitchTopo(Topo):
         self.addLink(h2, s3)
 
         self.addLink(s1, s2)
-        self.addLink(s1, s3)
-        self.addLink(s2, s1)
         self.addLink(s2, s3)
         self.addLink(s3, s1)
-        self.addLink(s3, s2)
 
 
 if __name__ == '__main__':
