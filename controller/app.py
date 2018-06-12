@@ -123,10 +123,13 @@ class SimpleSwitch(app_manager.RyuApp):
         # Preenche a tabela com as informações
         if in_port not in self.switches_arp_table[switch_mac_address]['in_ports']:
             self.switches_arp_table[switch_mac_address]['in_ports'].append(in_port)
+            print('>> Adicionou porta na tabela')
             has_new_info = True
 
         if switch_ip not in self.switches_arp_table[switch_mac_address]['ip_addresses']:
-            switch_ip not in self.switches_arp_table[switch_mac_address]['ip_addresses'].append(switch_ip)
+            self.switches_arp_table[switch_mac_address]['ip_addresses'].append(switch_ip)
+            print('>> Adicionou ip na tabela')
+
             has_new_info = True
 
         # TODO: rever..
