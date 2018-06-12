@@ -8,9 +8,9 @@ from mininet.node import OVSSwitch, Controller, RemoteController
 
 class SingleSwitchTopo(Topo):
     def build(self):
-        s1 = self.addSwitch('s1')
-        s2 = self.addSwitch('s2')
-        s3 = self.addSwitch('s3')
+        s1 = self.addSwitch('s1', protocols='OpenFlow13')
+        s2 = self.addSwitch('s2', protocols='OpenFlow13')
+        s3 = self.addSwitch('s3', protocols='OpenFlow13')
 
         h1 = self.addHost('h1', mac="00:00:00:00:11:11", ip="10.0.0.1/24")
         h2 = self.addHost('h2', mac="00:00:00:00:11:12", ip="10.0.0.2/24")
