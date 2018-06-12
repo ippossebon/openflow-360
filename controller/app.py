@@ -35,7 +35,7 @@ from ryu.lib.packet import ethernet, ether_types, arp, packet, ipv4
 from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
 
-import networkx as nx
+import nx as nx
 
 '''
 switches_arp_table:
@@ -213,7 +213,7 @@ class SimpleSwitch(app_manager.RyuApp):
         print('>> dst_mac_address type = ', type(dst_mac_address))
         print('>> src_mac_address type = ', type(src_mac_address))
         print('>> actions type = ', type(actions))
-        print('************* networkx.version = ', networkx.version)
+        print('************* nx.version = ', nx.version)
 
         # Instala fluxo no switch para evitar voltar ao controlador da próxima vez
         if out_port != ofproto.OFPP_FLOOD:
