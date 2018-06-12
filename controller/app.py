@@ -35,7 +35,7 @@ from ryu.lib.packet import ethernet, ether_types, arp, packet, ipv4
 from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
 
-import nx as nx
+import networkx as nx
 
 '''
 switches_arp_table:
