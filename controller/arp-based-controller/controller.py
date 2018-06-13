@@ -15,6 +15,13 @@ class SwitchOFController (app_manager.RyuApp):
         self.learning_table = LearningTable()
 
 
+    def isLLDPPacket(self, ev):
+        return eth.ethertype == ether_types.ETH_TYPE_LLDP
+
+    def isARPPacket(self, ev):
+        return eth.ethertype == ether_types.ETH_TYPE_ARP
+
+
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         print('>>> Packet In message')
@@ -32,7 +39,7 @@ class SwitchOFController (app_manager.RyuApp):
             # ignora pacotes LLDP (Link descovery)
             return
 
-        if self.isARPRequest(ev):
+        if self.isARPPacket(ev):
             has_new_info = self.handleARPPacket(ev)
 
             # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
@@ -51,6 +58,8 @@ class SwitchOFController (app_manager.RyuApp):
         else:
             self.handleARPReply(ev)
 
+    def isARPRequest(self, ev):
+        pass
 
     def handleARPRequest(self, ev):
         # recebe packet e packetIn
@@ -91,13 +100,6 @@ class SwitchOFController (app_manager.RyuApp):
         # Switch envia ARP reply para destino na porta out_port
 
         self.resendPacket(packet_in, out_port)
-
-
-    def isLLDPPacket(self, ev):
-        return eth.ethertype == ether_types.ETH_TYPE_LLDP
-
-    def isARPRequest(self, ev):
-        return eth.ethertype == ether_types.ETH_TYPE_ARP
 
 
     def actLikeL2Learning(self, packet, packetIn):
