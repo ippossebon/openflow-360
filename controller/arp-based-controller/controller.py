@@ -12,7 +12,7 @@ class SwitchOFController (app_manager.RyuApp):
         super(SimpleSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         self.switches = []
-        self.learningTable = LearningTable()
+        self.learning_table = LearningTable()
 
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
@@ -28,11 +28,11 @@ class SwitchOFController (app_manager.RyuApp):
         eth = pkt.get_protocol(ethernet.ethernet)
 
 
-        if eth.ethertype == ether_types.ETH_TYPE_LLDP:
+        if self.isLLDPPacket(ev):
             # ignora pacotes LLDP (Link descovery)
             return
 
-        if eth.ethertype == ether_types.ETH_TYPE_ARP:
+        if self.isARPRequest(ev):
             has_new_info = self.handleARPPacket(ev)
 
             # Se nada de novo pode ser aprendido com um ARP Request, o pacote é dropado
@@ -43,3 +43,84 @@ class SwitchOFController (app_manager.RyuApp):
                 self.logger.info('> Pacote ARP trouxe novas infos')
         else:
             actLikeL2Learning(ev)
+
+
+    def handleARPPacket(self, ev):
+        if self.isARPRequest(ev):
+            self.handleARPRequest(ev)
+        else:
+            self.handleARPReply(ev)
+
+
+    def handleARPRequest(self, ev):
+        # recebe packet e packetIn
+        last_mile = globalARPEntry.isNewARPFlow(ev)
+        globalARPEntry.update(arp_packet)
+
+        source_mac = arp_packet.source
+        destination_ip = arp_packet.destination_ip
+
+        if not self.learning_table.macIsKnown(source_mac):
+            # Para este switch, é um host novo
+            self.learnDataFromPacket(packet, packetIn, last_mile)
+            self.learning_table.appendKnownIPForMAC(source_mac, destination_ip)
+            self.resendPacket(packetIn, of.OFPP_ALL)
+
+        elif not self.learning_table.isIPKnownForMAC(source_mac, destination_ip):
+            # Este é um novo host, fazendo um novo ARP Request
+            self.learnDataFromPacket(packet, packetIn, last_mile)
+            self.learning_table.appendKnownIPForMAC(source_mac, destination_ip)
+            self.resendPacket(packetIn, of.OFPP_ALL)
+
+        else:
+            # Possivelmente, está recebendo um pacote ARP já conhecido (possível loop)
+            if not self.learning_table.isLastMile(source_mac):
+                self.learnDataFromPacket(packet, packetIn, last_mile)
+
+            self.dropPacket(packetIn)
+
+
+    def handleARPReply(self, ev):
+        # recebe packet e packetIn
+        last_mile = globalARPEntry.isNewARPFlow(arp_packet)
+
+        globalARPEntry.update(arp_packet)
+        self.learnDataFromPacket(packet, packetIn, last_mile)
+
+        out_port = self.learning_table.getAnyPortToReachHost(packet.dst, packetIn.in_port)
+        # Switch envia ARP reply para destino na porta out_port
+
+        self.resendPacket(packet_in, out_port)
+
+
+    def isLLDPPacket(self, ev):
+        return eth.ethertype == ether_types.ETH_TYPE_LLDP
+
+    def isARPRequest(self, ev):
+        return eth.ethertype == ether_types.ETH_TYPE_ARP
+
+
+    def actLikeL2Learning(self, packet, packetIn):
+
+        if self.learning_table.macIsKnown(destination_mac):
+            # Decide caminho para destination_mac de acordo com a tabela
+            out_port = self.learning_table.getAnyPortToReachHost(destination_mac, packetIn.in_port)
+            self.resendPacket(packetIn, out_port)
+            self.installForwardingFlow(packet.src, destination_mac, out_port)
+        else:
+            print('Erro! Não conhece o host')
+
+
+    def installForwardingFlow(self, sourceMAC, destinationMAC, outPort):
+        log.info("Switch ID "+self.switchID+" >>> installing forwarding flow...")
+        flowModMessage = of.ofp_flow_mod()
+        if self.learningTable.isLastMile(destinationMAC):
+            flowModMessage.idle_timeout = 300
+            flowModMessage.hard_timeout = 600
+        else:
+            flowModMessage.idle_timeout = 1
+            flowModMessage.hard_timeout = 3
+        flowModMessage.match.dl_src = sourceMAC
+        flowModMessage.match.dl_dst = destinationMAC
+        flowModMessage.actions.append(of.ofp_action_output(port=outPort))
+        self.connection.send(flowModMessage)
