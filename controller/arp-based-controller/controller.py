@@ -63,9 +63,14 @@ class SwitchOFController (app_manager.RyuApp):
 
     def handleARPRequest(self, ev):
         # recebe packet e packetIn
+
+        # last_mile indica se o pacote trouxe alguma informação nova
         last_mile = globalARPEntry.isNewARPFlow(ev)
+
+        # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(arp_packet)
 
+        # Switch cujo MAC é source_mac quer saber quem tem o IP destination_ip
         source_mac = arp_packet.source
         destination_ip = arp_packet.destination_ip
 

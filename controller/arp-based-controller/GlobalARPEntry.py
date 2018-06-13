@@ -24,12 +24,19 @@ class GlobalARPEntry (object):
                 self.global_ARP_entry[mac_address].append(ip_address)
 
     def isIPKnownForMAC(self, mac_address, ip_address):
+        # Indica se já sabemos o IP do host em questão
         return self.macExists(mac_address) and ip_address in self.global_ARP_entry[mac_address]
 
     def isNewARPFlow(self, arpPacket):
         requestor_mac = arpPacket.hwsrc
         requested_ip = arpPacket.protodst
-        return not self.macExists(requestor_mac) or not self.isIPKnownForMAC(requestor_mac, requested_ip)
+
+        # Verifica se o pacote ARP é de um novo host ou se traz um novo IP para um host conhecido.
+        is_new_host = not self.macExists(requestor_mac)
+        host_has_mapped_ip = self.isIPKnownForMAC(requestor_mac, requested_ip)
+        has_new_info = is_new_host or not host_has_mapped_ip
+
+        return has_new_info
 
     def update(self, arpPacket):
         if self.isNewARPFlow(arpPacket):
