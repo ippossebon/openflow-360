@@ -25,14 +25,14 @@ class LearningTable (object):
 
     def createNewEntryWithProperties(self, mac_address, reachable_through_port, last_mile):
         hostProperties = self.createNewEntryForMAC(mac_address)
-        hostProperties.addUniquePort(reachable_through_port)
+        hostProperties.addUniqueReachableThroughPort(reachable_through_port)
         hostProperties.last_mile = last_mile
 
     def appendKnownIPForMAC(self, mac_address, ip_address):
-        self.getPropertiesForMAC(mac_address).addUniqueIP(ip_address)
+        self.getPropertiesForMAC(mac_address).addUniqueKnownIP(ip_address)
 
     def appendReachableThroughPort(self, mac_address, port):
-        self.getPropertiesForMAC(mac_address).addUniquePort(port)
+        self.getPropertiesForMAC(mac_address).addUniqueReachableThroughPort(port)
 
     def setLastMile(self, mac_address, last_mile):
         self.getPropertiesForMAC(mac_address).last_mile = last_mile

@@ -1,5 +1,6 @@
 import datetime
 from collections import deque
+
 class HostProperties (object):
 
     def __init__(self):
@@ -8,11 +9,11 @@ class HostProperties (object):
         self._knownIPsTimeout = {}
         self.last_mile = False
 
-    def addUniquePort(self, port):
+    def addUniqueReachableThroughPort(self, port):
         if port not in self.reachable_through_ports:
             self.reachable_through_ports.append(port)
 
-    def addUniqueIP(self, ip_address):
+    def addUniqueKnownIP(self, ip_address):
         self._updateIPsTimeout(ip_address)
         if ip_address not in self._knownIPsTimeout:
             self._knownIPsTimeout[ip_address] = datetime.datetime.now()

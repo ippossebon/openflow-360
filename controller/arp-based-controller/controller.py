@@ -70,7 +70,6 @@ class SwitchOFController (app_manager.RyuApp):
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(arp_packet)
 
-        # Switch cujo MAC é source_mac quer saber quem tem o IP destination_ip
         source_mac = arp_packet.source
         destination_ip = arp_packet.destination_ip
 
@@ -78,17 +77,20 @@ class SwitchOFController (app_manager.RyuApp):
             # Para este switch, é um host novo
             self.learnDataFromPacket(packet, packetIn, last_mile)
             self.learning_table.appendKnownIPForMAC(source_mac, destination_ip)
-            self.resendPacket(packetIn, of.OFPP_ALL)
+
+            self.resendPacket(packetIn, of.OFPP_ALL) # por que precisamos reenviar?
 
         elif not self.learning_table.isIPKnownForMAC(source_mac, destination_ip):
-            # Este é um novo host, fazendo um novo ARP Request
+            # Este é um host já conhecido, fazendo um novo ARP Request
             self.learnDataFromPacket(packet, packetIn, last_mile)
             self.learning_table.appendKnownIPForMAC(source_mac, destination_ip)
-            self.resendPacket(packetIn, of.OFPP_ALL)
+
+            self.resendPacket(packetIn, of.OFPP_ALL) # por que precisamos reenviar?
 
         else:
             # Possivelmente, está recebendo um pacote ARP já conhecido (possível loop)
             if not self.learning_table.isLastMile(source_mac):
+                # Se o request foi feito por um host que não tem ligação direta com o switch ??
                 self.learnDataFromPacket(packet, packetIn, last_mile)
 
             self.dropPacket(packetIn)
@@ -96,7 +98,7 @@ class SwitchOFController (app_manager.RyuApp):
 
     def handleARPReply(self, ev):
         # recebe packet e packetIn
-        last_mile = globalARPEntry.isNewARPFlow(arp_packet)
+        last_mile = globalARPEntry.isNewARPFlow(arp_packet) # ???
 
         globalARPEntry.update(arp_packet)
         self.learnDataFromPacket(packet, packetIn, last_mile)
@@ -104,8 +106,23 @@ class SwitchOFController (app_manager.RyuApp):
         out_port = self.learning_table.getAnyPortToReachHost(packet.dst, packetIn.in_port)
         # Switch envia ARP reply para destino na porta out_port
 
-        self.resendPacket(packet_in, out_port)
+        self.resendPacket(packet_in, out_port) # ??
 
+
+    def learnDataFromPacket(self, packet, packetIn, last_mile = False):
+        source_mac = packet.src
+
+        if self.learning_table.macIsKnown(source_mac):
+            # É um host conhecido, vai acrescentar informações
+            self.learning_table.appendReachableThroughPort(source_mac, packetIn.in_port)
+
+            if last_mile == False and self.learning_table.isLastMile(source_mac):
+                last_mile = True
+
+            self.learning_table.setLastMile(source_mac, last_mile)
+        else:
+            # É um novo host, vai criar entrada na tabela
+            self.learning_table.createNewEntryWithProperties(source_mac, packetIn.in_port, last_mile)
 
     def actLikeL2Learning(self, packet, packetIn):
 
