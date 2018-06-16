@@ -207,10 +207,8 @@ class SwitchOFController (app_manager.RyuApp):
         in_port = msg.match['in_port']
 
         pkt = packet.Packet(msg.data)
-
-        print('[actLikeL2Learning] msg = {0}'.format(msg))
-        print('[actLikeL2Learning] pkt = {0}'.format(pkt))
-
+        eth = pkt.get_protocol(ethernet.ethernet)
+        destination_mac = eth.dst
 
         if self.learning_table.macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
