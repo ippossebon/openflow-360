@@ -8,7 +8,7 @@ class LearningTable (object):
 
     def getPropertiesForMAC(self, mac_address):
         if mac_address not in self.macMap:
-            self.log.error("ERROR: Called getProperties for non existent MAC Address: ".join(mac_address))
+            print("ERROR: Called getProperties for non existent MAC Address: ".join(mac_address))
             return None
         else:
             return self.macMap[mac_address]
@@ -18,7 +18,7 @@ class LearningTable (object):
 
     def createNewEntryForMAC(self, mac_address):
         if mac_address in self.macMap:
-            self.log.error("ERROR: Called createNewEntry for existent MAC Address: ".join(mac_address))
+            print("ERROR: Called createNewEntry for existent MAC Address: ".join(mac_address))
         else:
             self.macMap[mac_address] = HostProperties()
         return self.getPropertiesForMAC(mac_address)

@@ -9,14 +9,14 @@ class GlobalARPEntry (object):
 
     def createNewEntryForMAC(self, mac_address):
         if self.macExists(mac_address):
-            self.log.warning("createNewEntryForMAC called with existant MAC ADDRESS: " + str(mac_address))
+            print("createNewEntryForMAC called with existant MAC ADDRESS: " + str(mac_address))
             return
         else:
             self.global_ARP_entry[mac_address] = []
 
     def addUniqueIPForMAC(self, mac_address, ip_address):
         if not self.macExists(mac_address):
-            self.log.error("addUniqueIPForMac called with non existant MAC ADDRESS: " + str(mac_address))
+            print("addUniqueIPForMac called with non existant MAC ADDRESS: " + str(mac_address))
             return
         else:
             if ip_address not in self.global_ARP_entry[mac_address]:
