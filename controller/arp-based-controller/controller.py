@@ -262,15 +262,17 @@ class SwitchOFController (app_manager.RyuApp):
 
     """
     def addFlow(self, datapath, in_port, dst, src, actions):
+        switch_id = datapath.id
         ofproto = datapath.ofproto
 
         match = datapath.ofproto_parser.OFPMatch(in_port=in_port, eth_dst=dst)
 
         idle_timeout = 1
         hard_timeout = 3
+
         inst = [datapath.ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
-        if self.learningTable.isLastMile(destinationMAC):
+        if self.learningTables[str(switch_id)].isLastMile(destinationMAC):
             idle_timeout = 300
             hard_timeout = 600
 
@@ -286,18 +288,3 @@ class SwitchOFController (app_manager.RyuApp):
         )
 
         datapath.send_msg(mod)
-
-    # def addFlow(self, datapath, priority, match, actions, buffer_id=None):
-    #     ofproto = datapath.ofproto
-    #     parser = datapath.ofproto_parser
-    #
-    #     inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-    #                                          actions)]
-    #     if buffer_id:
-    #         mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-    #                                 priority=priority, match=match,
-    #                                 instructions=inst)
-    #     else:
-    #         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-    #                                 match=match, instructions=inst)
-    #     datapath.send_msg(mod)
