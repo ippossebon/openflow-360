@@ -122,27 +122,36 @@ class SwitchOFController (app_manager.RyuApp):
         globalARPEntry.update(requestor_mac, requested_ip)
 
         if not self.learning_table.macIsKnown(requestor_mac):
+            print('[handleARPRequest]: para o switch é um host novo.')
+
             # Para este switch, é um host novo
             self.learnDataFromPacket(requestor_mac, in_port, last_mile)
             self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
+            print('[handleARPRequest]: Vai encaminhar o pacote para todas as portas.')
+
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
 
         elif not self.learning_table.isIPKnownForMAC(requestor_mac, requested_ip):
             # Este é um host já conhecido, fazendo um novo ARP Request
+            print('[handleARPRequest]: para o switch é um host conhecido fazendo um novo arp request.')
+
             self.learnDataFromPacket(requestor_mac, in_port, last_mile)
             self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
+            print('[handleARPRequest]: Vai encaminhar o pacote para todas as portas.')
+
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
         else:
             # Possivelmente, está recebendo um pacote ARP já conhecido (possível loop)
             if not self.learning_table.isLastMile(requestor_mac):
                 # Se o request foi feito por um host que não tem ligação direta com o switch ??
                 self.learnDataFromPacket(requestor_mac, in_port, last_mile)
+            print('[handleARPRequest]: dropa pacote')
             return
             #self.dropPacket(packetIn) ?
             # Drop
@@ -171,8 +180,7 @@ class SwitchOFController (app_manager.RyuApp):
         out_port = self.learning_table.getAnyPortToReachHost(destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
-
-        actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
+        actions = [parser.OFPActionOutput(out_port)]
         self.forwardPacket(msg, out_port, msg.buffer_id, actions)
 
 
@@ -191,41 +199,31 @@ class SwitchOFController (app_manager.RyuApp):
 
 
     def actLikeL2Learning(self, ev):
+        print ('> actLikeL2Learning')
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
+        in_port = msg.match['in_port']
 
         pkt = packet.Packet(msg.data)
 
         if self.learning_table.macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
             out_port = self.learning_table.getAnyPortToReachHost(destination_mac, msg.in_port)
-            self.forwardPacket(msg, out_port)
-            self.installForwardingFlow(packet.src, destination_mac, out_port)
+
+            actions = [parser.OFPActionOutput(out_port)]
+            self.forwardPacket(msg, out_port, msg.buffer_id, actions)
+
+            self.addFlow(datapath, in_port, destination_mac, )
         else:
             print('Erro! Não conhece o host')
-
-
-    def installForwardingFlow(self, sourceMAC, destinationMAC, outPort):
-        log.info("Switch ID "+self.switchID+" >>> installing forwarding flow...")
-        flowModMessage = of.ofp_flow_mod()
-        if self.learningTable.isLastMile(destinationMAC):
-            flowModMessage.idle_timeout = 300
-            flowModMessage.hard_timeout = 600
-        else:
-            flowModMessage.idle_timeout = 1
-            flowModMessage.hard_timeout = 3
-        flowModMessage.match.dl_src = sourceMAC
-        flowModMessage.match.dl_dst = destinationMAC
-        flowModMessage.actions.append(of.ofp_action_output(port=outPort))
-        self.connection.send(flowModMessage)
 
     """
     Instala fluxo no switch. Isto é, envia mensagem de FlowMod.
 
     """
-    def add_flow(self, datapath, in_port, dst, src, actions):
+    def addFlow(self, datapath, in_port, dst, src, actions):
         ofproto = datapath.ofproto
 
         match = datapath.ofproto_parser.OFPMatch(
@@ -255,7 +253,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         datapath.send_msg(mod)
 
-    # def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+    # def addFlow(self, datapath, priority, match, actions, buffer_id=None):
     #     ofproto = datapath.ofproto
     #     parser = datapath.ofproto_parser
     #
