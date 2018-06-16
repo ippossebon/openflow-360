@@ -121,8 +121,6 @@ class SwitchOFController (app_manager.RyuApp):
         in_port = msg.match['in_port']
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
-        print('[handleARPRequest] Host {0} last_mile = {1} em relacao ao switch {2}'.format(
-            requestor_mac, last_mile, datapath.id))
 
         # Assumption: a primeira vez que um switch entrar em contato com o controlador, será por causa de um ARP request/reply
         if str(switch_id) not in self.learning_tables:
@@ -143,32 +141,20 @@ class SwitchOFController (app_manager.RyuApp):
             # estranho... por que coloca o requested_ip?
             self.learning_tables[str(switch_id)].appendKnownIPForMAC(requestor_mac, requested_ip)
 
-            print ('[handleARPRequest] learning_tables:')
-            for switch_id in self.learning_tables:
-                print('Table {0}'.format(switch_id))
-                self.learning_tables[switch_id].printTable()
-
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
-            print('[handleARPRequest]: Vai encaminhar o ARP REQUEST para todas as portas.')
 
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
 
         elif not self.learning_tables[str(switch_id)].isIPKnownForMAC(requestor_mac, requested_ip):
             # Este é um host já conhecido, fazendo um novo ARP Request
-            print('[handleARPRequest]: para o switch eh um host conhecido fazendo um novo arp request.')
+            print('[handleARPRequest]: para o switch {0} eh um host conhecido fazendo um ARP.'.format(switch_id))
 
             self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
             self.learning_tables[str(switch_id)].appendKnownIPForMAC(requestor_mac, requested_ip)
 
-            print ('[handleARPRequest] learning_tables:')
-            for switch_id in self.learning_tables:
-                print('Table {0}'.format(switch_id))
-                self.learning_tables[switch_id].printTable()
-
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
-            print('[handleARPRequest]: Vai encaminhar o pacote para todas as portas.')
 
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
         else:
@@ -219,7 +205,6 @@ class SwitchOFController (app_manager.RyuApp):
         print('[handleARPReply] tabela depois do update: ')
         self.learning_tables[str(switch_id)].printTable()
 
-
         self.learnDataFromPacket(switch_id, arp_reply_sender_mac, in_port, last_mile)
 
         out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(arp_reply_destination_mac, in_port)
@@ -233,9 +218,6 @@ class SwitchOFController (app_manager.RyuApp):
         print('[learnDataFromPacket] switch_id: {0}, source_mac: {1}, in_port: {2}.'.format(
             switch_id, source_mac, in_port))
 
-        print('[learnDataFromPacket] tabela: ')
-        self.learning_tables[str(switch_id)].printTable()
-
         if self.learning_tables[str(switch_id)].macIsKnown(source_mac):
             print('[learnDataFromPacket] Conhece o MAC em questao. Vai colocar as infos que conseguiu')
             # É um host conhecido, vai acrescentar informações
@@ -248,7 +230,6 @@ class SwitchOFController (app_manager.RyuApp):
         else:
             # É um novo host, vai criar entrada na tabela
             print('[learnDataFromPacket] Nao onhece o MAC em questao. Vai criar entrada na tabela')
-
             self.learning_tables[str(switch_id)].createNewEntryWithProperties(source_mac, in_port, last_mile)
 
 
@@ -280,6 +261,13 @@ class SwitchOFController (app_manager.RyuApp):
             self.addFlow(datapath, in_port, destination_mac, )
         else:
             print('Erro! Nao conhece o host')
+
+
+
+    def printLearningTables(self):
+        for switch_id in self.learning_tables:
+            print('Table {0}'.format(switch_id))
+            self.learning_tables[switch_id].printTable()
 
     """
     Instala fluxo no switch. Isto é, envia mensagem de FlowMod.
