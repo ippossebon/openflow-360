@@ -204,7 +204,7 @@ class SwitchOFController (app_manager.RyuApp):
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(requestor_mac, requested_ip)
 
-        self.learnDataFromPacket(requestor_mac, in_port, last_mile)
+        self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
 
         destination_mac = arp_packet.dst_mac
         #out_port = self.learning_tables.getAnyPortToReachHost(packet.dst, in_port)
