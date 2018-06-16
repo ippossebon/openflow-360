@@ -165,8 +165,9 @@ class SwitchOFController (app_manager.RyuApp):
 
         self.learnDataFromPacket(requestor_mac, in_port, last_mile)
 
+        destination_mac = arp_packet.dst_mac
         #out_port = self.learning_table.getAnyPortToReachHost(packet.dst, in_port)
-        out_port = self.learning_table.getAnyPortToReachHost(requested_ip, in_port)
+        out_port = self.learning_table.getAnyPortToReachHost(destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
 
