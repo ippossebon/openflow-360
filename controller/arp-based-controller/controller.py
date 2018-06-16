@@ -122,7 +122,7 @@ class SwitchOFController (app_manager.RyuApp):
         globalARPEntry.update(requestor_mac, requested_ip)
 
         if not self.learning_table.macIsKnown(requestor_mac):
-            print('[handleARPRequest]: para o switch é um host novo.')
+            print('[handleARPRequest]: para o switch eh um host novo.')
 
             # Para este switch, é um host novo
             self.learnDataFromPacket(requestor_mac, in_port, last_mile)
@@ -136,7 +136,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         elif not self.learning_table.isIPKnownForMAC(requestor_mac, requested_ip):
             # Este é um host já conhecido, fazendo um novo ARP Request
-            print('[handleARPRequest]: para o switch é um host conhecido fazendo um novo arp request.')
+            print('[handleARPRequest]: para o switch eh um host conhecido fazendo um novo arp request.')
 
             self.learnDataFromPacket(requestor_mac, in_port, last_mile)
             self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
