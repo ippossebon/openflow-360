@@ -264,11 +264,7 @@ class SwitchOFController (app_manager.RyuApp):
     def addFlow(self, datapath, in_port, dst, src, actions):
         ofproto = datapath.ofproto
 
-        match = datapath.ofproto_parser.OFPMatch(
-            in_port=in_port,
-            dl_dst=haddr_to_bin(dst),
-            dl_src=haddr_to_bin(src)
-        )
+        match = datapath.ofproto_parser.OFPMatch(in_port=in_port, eth_dst=dst)
 
         idle_timeout = 1
         hard_timeout = 3
