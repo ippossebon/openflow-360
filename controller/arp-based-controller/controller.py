@@ -231,23 +231,22 @@ class SwitchOFController (app_manager.RyuApp):
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
-        print('[actLikeL2Learning] msg = {0}'.format(msg))
-
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
         destination_mac = eth.dst
+        source_mac = eth.src
 
         if self.learning_tables[str(switch_id)].macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
-            out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, msg.in_port)
+            out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, in_port)
 
-            print('[actLikeL2Learning] Svwitch {0} ai mandar pacote para {1} via porta {2}'.format(
+            print('[actLikeL2Learning] Switch {0} vai mandar pacote para {1} via porta {2}'.format(
                 switch_id, destination_mac, out_port))
 
             actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
             self.forwardPacket(msg, out_port, msg.buffer_id, actions)
 
-            self.addFlow(datapath, in_port, destination_mac, )
+            self.addFlow(datapath, in_port, destination_mac, source_mac, actions)
         else:
             print('Erro! Nao conhece o host')
 
