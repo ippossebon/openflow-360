@@ -223,10 +223,11 @@ class SwitchOFController (app_manager.RyuApp):
 
 
     def learnDataFromPacket(self, switch_id, source_mac, in_port, last_mile = False):
-        print('[learnDataFromPacket] switch_id: {0}, source_mac: {1} - type {2}.'.format(
-            switch_id, source_mac, type(source_mac)))
+        print('[learnDataFromPacket] switch_id: {0}, source_mac: {1}, in_port: {2}.'.format(
+            switch_id, source_mac, in_port))
 
         if self.learning_tables[str(switch_id)].macIsKnown(source_mac):
+            print('[learnDataFromPacket] Conhece o MAC em questao. Vai colocar as infos que conseguiu')
             # É um host conhecido, vai acrescentar informações
             self.learning_tables[str(switch_id)].appendReachableThroughPort(source_mac, in_port)
 
@@ -236,6 +237,8 @@ class SwitchOFController (app_manager.RyuApp):
             self.learning_tables[str(switch_id)].setLastMile(source_mac, last_mile)
         else:
             # É um novo host, vai criar entrada na tabela
+            print('[learnDataFromPacket] Nao onhece o MAC em questao. Vai criar entrada na tabela')
+
             self.learning_tables[str(switch_id)].createNewEntryWithProperties(source_mac, in_port, last_mile)
 
 
