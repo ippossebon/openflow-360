@@ -14,6 +14,7 @@ from LearningTable import LearningTable
 
 globalARPEntry = GlobalARPEntry()
 
+SWITCHES_COUNT = 3
 
 class SwitchOFController (app_manager.RyuApp):
 
@@ -23,7 +24,9 @@ class SwitchOFController (app_manager.RyuApp):
         super(SwitchOFController, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         self.switches = []
-        self.learning_table = LearningTable()
+
+        # A chave do dicionário é o switch_id. Cada switch tem uma learning table associada
+        self.learning_tables = {}
 
 
     def isLLDPPacket(self, ev):
@@ -109,6 +112,7 @@ class SwitchOFController (app_manager.RyuApp):
         """
         msg = ev.msg
         datapath = msg.datapath
+        switch_id = datapath.id
         pkt = packet.Packet(msg.data)
         arp_packet = pkt.get_protocol(arp.arp)
 
@@ -120,22 +124,24 @@ class SwitchOFController (app_manager.RyuApp):
         print('[handleARPRequest] Host {0} last_mile = {1} em relacao ao switch {2}'.format(
             requestor_mac, last_mile, datapath.id))
 
-        print('[handleARPRequest]: Mensagem recebida = {0}'.format(msg))
-
+        # Assumption: a primeira vez que um switch entrar em contato com o controlador, será por causa de um ARP request/reply
+        if switch_id not in self.learning_tables:
+            # Inicializa lerning table do switch
+            self.learning_tables[switch_id] = LearningTable()
 
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(requestor_mac, requested_ip)
 
         print('[handleARPRequest] Host {0} querendo saber quem tem o IP {1}'.format(requestor_mac, requested_ip))
 
-        if not self.learning_table.macIsKnown(requestor_mac):
-            print('[handleARPRequest]: para o switch {0} eh um host novo.'.format(datapath.id))
+        if not self.learning_tables[switch_id].macIsKnown(requestor_mac):
+            print('[handleARPRequest]: para o switch {0} eh um host novo.'.format(switch_id))
 
             # Para este switch, é um host novo
-            self.learnDataFromPacket(requestor_mac, in_port, last_mile)
+            self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
 
             # estranho... por que coloca o requested_ip?
-            self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
+            self.learning_tables[switch_id].appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
@@ -143,12 +149,12 @@ class SwitchOFController (app_manager.RyuApp):
 
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
 
-        elif not self.learning_table.isIPKnownForMAC(requestor_mac, requested_ip):
+        elif not self.learning_tables[switch_id].isIPKnownForMAC(requestor_mac, requested_ip):
             # Este é um host já conhecido, fazendo um novo ARP Request
             print('[handleARPRequest]: para o switch eh um host conhecido fazendo um novo arp request.')
 
-            self.learnDataFromPacket(requestor_mac, in_port, last_mile)
-            self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
+            self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
+            self.learning_tables[switch_id].appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
@@ -157,9 +163,9 @@ class SwitchOFController (app_manager.RyuApp):
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
         else:
             # Possivelmente, está recebendo um pacote ARP já conhecido (possível loop)
-            if not self.learning_table.isLastMile(requestor_mac):
+            if not self.learning_tables[switch_id].isLastMile(requestor_mac):
                 # Se o request foi feito por um host que não tem ligação direta com o switch ??
-                self.learnDataFromPacket(requestor_mac, in_port, last_mile)
+                self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
             print('[handleARPRequest]: dropa pacote')
             return
             #self.dropPacket(packetIn) ?
@@ -170,6 +176,7 @@ class SwitchOFController (app_manager.RyuApp):
     def handleARPReply(self, ev):
         msg = ev.msg
         datapath = msg.datapath
+        switch_id = datapath.id
         pkt = packet.Packet(msg.data)
         arp_packet = pkt.get_protocol(arp.arp)
 
@@ -179,38 +186,44 @@ class SwitchOFController (app_manager.RyuApp):
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
 
+        # Assumption: a primeira vez que um switch entrar em contato com o controlador, será por causa de um ARP request/reply
+        if switch_id not in self.learning_tables:
+            # Inicializa lerning table do switch
+            self.learning_tables[switch_id] = LearningTable()
+
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(requestor_mac, requested_ip)
 
         self.learnDataFromPacket(requestor_mac, in_port, last_mile)
 
         destination_mac = arp_packet.dst_mac
-        #out_port = self.learning_table.getAnyPortToReachHost(packet.dst, in_port)
-        out_port = self.learning_table.getAnyPortToReachHost(destination_mac, in_port)
+        #out_port = self.learning_tables.getAnyPortToReachHost(packet.dst, in_port)
+        out_port = self.learning_tables[switch_id].getAnyPortToReachHost(destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
         actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
         self.forwardPacket(msg, out_port, msg.buffer_id, actions)
 
 
-    def learnDataFromPacket(self, source_mac, in_port, last_mile = False):
-        if self.learning_table.macIsKnown(source_mac):
+    def learnDataFromPacket(self, switch_id, source_mac, in_port, last_mile = False):
+        if self.learning_tables[switch_id].macIsKnown(source_mac):
             # É um host conhecido, vai acrescentar informações
-            self.learning_table.appendReachableThroughPort(source_mac, in_port)
+            self.learning_tables[switch_id].appendReachableThroughPort(source_mac, in_port)
 
-            if last_mile == False and self.learning_table.isLastMile(source_mac):
+            if last_mile == False and self.learning_tables[switch_id].isLastMile(source_mac):
                 last_mile = True
 
-            self.learning_table.setLastMile(source_mac, last_mile)
+            self.learning_tables[switch_id][switch_id].setLastMile(source_mac, last_mile)
         else:
             # É um novo host, vai criar entrada na tabela
-            self.learning_table.createNewEntryWithProperties(source_mac, in_port, last_mile)
+            self.learning_tables[switch_id][switch_id].createNewEntryWithProperties(source_mac, in_port, last_mile)
 
 
     def actLikeL2Learning(self, ev):
         print ('> actLikeL2Learning')
         msg = ev.msg
         datapath = msg.datapath
+        switch_id = datapath.id
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
@@ -224,9 +237,9 @@ class SwitchOFController (app_manager.RyuApp):
         print('[actLikeL2Learning] destination_mac = {0}'.format(destination_mac))
 
 
-        if self.learning_table.macIsKnown(destination_mac):
+        if self.learning_tables[switch_id].macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
-            out_port = self.learning_table.getAnyPortToReachHost(destination_mac, msg.in_port)
+            out_port = self.learning_tables[switch_id].getAnyPortToReachHost(destination_mac, msg.in_port)
 
             actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
             self.forwardPacket(msg, out_port, msg.buffer_id, actions)
