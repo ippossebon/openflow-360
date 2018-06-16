@@ -206,7 +206,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         # Assumption: a primeira vez que um switch entrar em contato com o
         # controlador, será por causa de um ARP request/reply
-        if switch_id not in self.learning_tables:
+        if str(switch_id) not in self.learning_tables:
             # Inicializa lerning table do switch
             self.learning_tables[str(switch_id)] = LearningTable()
 
