@@ -210,8 +210,15 @@ class SwitchOFController (app_manager.RyuApp):
             # Inicializa lerning table do switch
             self.learning_tables[str(switch_id)] = LearningTable()
 
+        print('[handleARPReply] tabela antes do update: ')
+        self.learning_tables[str(switch_id)].printTable()
+
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(arp_reply_sender_mac, arp_reply_destination_ip)
+
+        print('[handleARPReply] tabela depois do update: ')
+        self.learning_tables[str(switch_id)].printTable()
+
 
         self.learnDataFromPacket(switch_id, arp_reply_sender_mac, in_port, last_mile)
 
