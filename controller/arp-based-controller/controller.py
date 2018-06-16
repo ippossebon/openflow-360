@@ -231,6 +231,8 @@ class SwitchOFController (app_manager.RyuApp):
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
+        print('[actLikeL2Learning] msg = {0}'.format(msg))
+
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
         destination_mac = eth.dst
