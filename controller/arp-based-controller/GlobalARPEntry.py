@@ -31,12 +31,20 @@ class GlobalARPEntry (object):
     def isNewARPFlow(self, source_mac, destination_ip):
         # Verifica se o pacote ARP é de host conhecido ou se o pacote traz o IP de um MAC mapeado
         is_new_host = not self.macExists(source_mac)
+        print('[isNewARPFlow] is_new_host = {0}'.format(is_new_host))
+
         host_has_mapped_ip = self.isIPKnownForMAC(source_mac, destination_ip)
+        print('[isNewARPFlow] host_has_mapped_ip = {0}'.format(host_has_mapped_ip))
+
         is_new_arp_flow = is_new_host or not host_has_mapped_ip
+        print('[isNewARPFlow] is_new_arp_flow = {0}'.format(is_new_arp_flow))
+
 
         return is_new_arp_flow
 
     def update(self, source_mac, destination_ip):
+        print('[update] source_mac = {0} e destination_mac = {1}'.format(source_mac, destination_ip))
+
         if self.isNewARPFlow(source_mac, destination_ip):
             if not self.macExists(source_mac):
                 self.createNewEntryForMAC(source_mac)

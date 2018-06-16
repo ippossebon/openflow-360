@@ -186,8 +186,8 @@ class SwitchOFController (app_manager.RyuApp):
         in_port = msg.match['in_port']
 
         print('>>>> ARP REPLY')
-        print('ARP reply veio do host {0}, cujo IP eh {1}. Destino do ARP reply eh {2}, cujo IP eh {3}'.format(
-            arp_reply_sender_mac, arp_reply_sender_ip, arp_reply_destination_mac, arp_reply_destination_ip))
+        print('ARP reply veio do host {0}. Destino do ARP reply eh {1}'.format(
+            arp_reply_sender_mac, arp_reply_destination_mac))
 
 
         # Assumption: a primeira vez que um switch entrar em contato com o
