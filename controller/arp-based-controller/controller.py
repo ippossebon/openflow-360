@@ -226,6 +226,9 @@ class SwitchOFController (app_manager.RyuApp):
         print('[learnDataFromPacket] switch_id: {0}, source_mac: {1}, in_port: {2}.'.format(
             switch_id, source_mac, in_port))
 
+        print('[learnDataFromPacket] tabela: ')
+        self.learning_tables[str(switch_id)].printTable()
+
         if self.learning_tables[str(switch_id)].macIsKnown(source_mac):
             print('[learnDataFromPacket] Conhece o MAC em questao. Vai colocar as infos que conseguiu')
             # É um host conhecido, vai acrescentar informações
