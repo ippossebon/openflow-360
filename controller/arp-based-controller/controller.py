@@ -58,7 +58,7 @@ class SwitchOFController (app_manager.RyuApp):
             buffer_id = buffer_id,
             actions = actions
         )#Generate the message
-        dp.send_msg(out) #Send the message to the switch
+        datapath.send_msg(out) #Send the message to the switch
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
