@@ -20,7 +20,7 @@ class SwitchOFController (app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(SimpleSwitch, self).__init__(*args, **kwargs)
+        super(SwitchOFController, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         self.switches = []
         self.learning_table = LearningTable()
