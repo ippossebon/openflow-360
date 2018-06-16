@@ -176,7 +176,7 @@ class SwitchOFController (app_manager.RyuApp):
             if not self.learning_tables[str(switch_id)].isLastMile(requestor_mac):
                 # Se o request foi feito por um host que não tem ligação direta com o switch ??
                 self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
-            print('[handleARPRequest]: dropa pacote')
+            print('[handleARPRequest]: JA RECEBEU ESSE CARA -  dropa pacote')
             return
             #self.dropPacket(packetIn) ?
             # Drop
@@ -207,7 +207,6 @@ class SwitchOFController (app_manager.RyuApp):
         self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
 
         destination_mac = arp_packet.dst_mac
-        #out_port = self.learning_tables.getAnyPortToReachHost(packet.dst, in_port)
         out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
