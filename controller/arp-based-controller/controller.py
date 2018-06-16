@@ -143,9 +143,10 @@ class SwitchOFController (app_manager.RyuApp):
             if not self.learning_table.isLastMile(requestor_mac):
                 # Se o request foi feito por um host que não tem ligação direta com o switch ??
                 self.learnDataFromPacket(requestor_mac, in_port, last_mile)
-
-            #self.dropPacket(packetIn) ?
             return
+            #self.dropPacket(packetIn) ?
+            # Drop
+            #return 1
 
 
     def handleARPReply(self, ev):
@@ -235,6 +236,8 @@ class SwitchOFController (app_manager.RyuApp):
 
         idle_timeout = 1
         hard_timeout = 3
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+
         if self.learningTable.isLastMile(destinationMAC):
             idle_timeout = 300
             hard_timeout = 600
@@ -242,13 +245,27 @@ class SwitchOFController (app_manager.RyuApp):
         mod = datapath.ofproto_parser.OFPFlowMod(
             datapath=datapath,
             match=match,
-            cookie=0,
             command=ofproto.OFPFC_ADD,
             idle_timeout=idle_timeout,
             hard_timeout=hard_timeout,
             priority=ofproto.OFP_DEFAULT_PRIORITY,
-            flags=ofproto.OFPFF_SEND_FLOW_REM,
-            actions=actions
+            actions=actions,
+            instructions=inst
         )
 
         datapath.send_msg(mod)
+
+    # def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+    #     ofproto = datapath.ofproto
+    #     parser = datapath.ofproto_parser
+    #
+    #     inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+    #                                          actions)]
+    #     if buffer_id:
+    #         mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+    #                                 priority=priority, match=match,
+    #                                 instructions=inst)
+    #     else:
+    #         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+    #                                 match=match, instructions=inst)
+    #     datapath.send_msg(mod)
