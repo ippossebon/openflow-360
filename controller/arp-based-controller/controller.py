@@ -191,12 +191,19 @@ class SwitchOFController (app_manager.RyuApp):
         arp_packet = pkt.get_protocol(arp.arp)
 
         requestor_mac = arp_packet.src_mac
+
         requested_ip = arp_packet.dst_ip
         in_port = msg.match['in_port']
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
 
-        # Assumption: a primeira vez que um switch entrar em contato com o controlador, será por causa de um ARP request/reply
+        print('>>>> ARP REPLY')
+        print('ARP reply veio do host {0}, cujo IP eh {1}. Destino do ARP reply eh {2}, cujo IP eh {3}'.format(
+            requestor_mac, arp_packet.src_ip, arp_packet.dst_mac, arp_packet.dst_ip))
+
+
+        # Assumption: a primeira vez que um switch entrar em contato com o
+        # controlador, será por causa de um ARP request/reply
         if switch_id not in self.learning_tables:
             # Inicializa lerning table do switch
             self.learning_tables[str(switch_id)] = LearningTable()
