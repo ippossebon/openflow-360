@@ -117,15 +117,22 @@ class SwitchOFController (app_manager.RyuApp):
         in_port = msg.match['in_port']
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
+        print('[handleARPRequest] Host {0} last_mile = {1} em relação ao switch {2}'.format(
+            requestor_mac, last_mile, datapath.id))
+
 
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(requestor_mac, requested_ip)
 
+        print('[handleARPRequest] Host {0} querendo saber quem tem o IP {1}'.format(requestor_mac, requested_ip))
+
         if not self.learning_table.macIsKnown(requestor_mac):
-            print('[handleARPRequest]: para o switch eh um host novo.')
+            print('[handleARPRequest]: para o switch {0} eh um host novo.'.format(datapath.id))
 
             # Para este switch, é um host novo
             self.learnDataFromPacket(requestor_mac, in_port, last_mile)
+
+            # estranho... por que coloca o requested_ip?
             self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
