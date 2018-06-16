@@ -120,6 +120,8 @@ class SwitchOFController (app_manager.RyuApp):
         print('[handleARPRequest] Host {0} last_mile = {1} em relacao ao switch {2}'.format(
             requestor_mac, last_mile, datapath.id))
 
+        print('[handleARPRequest]: Mensagem recebida = {0}'.format(msg))
+
 
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(requestor_mac, requested_ip)
@@ -137,7 +139,7 @@ class SwitchOFController (app_manager.RyuApp):
 
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
-            print('[handleARPRequest]: Vai encaminhar o pacote para todas as portas.')
+            print('[handleARPRequest]: Vai encaminhar o ARP REQUEST para todas as portas.')
 
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
 
