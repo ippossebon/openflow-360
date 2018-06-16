@@ -210,6 +210,11 @@ class SwitchOFController (app_manager.RyuApp):
         eth = pkt.get_protocol(ethernet.ethernet)
         destination_mac = eth.dst
 
+        print('[actLikeL2Learning] pkt = {0}'.format(pkt))
+        print('[actLikeL2Learning] eth = {0}'.format(eth))
+        print('[actLikeL2Learning] destination_mac = {0}'.format(destination_mac))
+
+
         if self.learning_table.macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
             out_port = self.learning_table.getAnyPortToReachHost(destination_mac, msg.in_port)
@@ -219,7 +224,7 @@ class SwitchOFController (app_manager.RyuApp):
 
             self.addFlow(datapath, in_port, destination_mac, )
         else:
-            print('Erro! Não conhece o host')
+            print('Erro! Nao conhece o host')
 
     """
     Instala fluxo no switch. Isto é, envia mensagem de FlowMod.
