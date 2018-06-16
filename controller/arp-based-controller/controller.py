@@ -272,7 +272,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         inst = [datapath.ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
-        if self.learning_tables[str(switch_id)].isLastMile(destinationMAC):
+        if self.learning_tables[str(switch_id)].isLastMile(dst):
             idle_timeout = 300
             hard_timeout = 600
 
