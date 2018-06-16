@@ -86,7 +86,16 @@ class SwitchOFController (app_manager.RyuApp):
             self.handleARPReply(ev)
 
     def isARPRequest(self, ev):
-        pass
+        msg = ev.msg
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        pkt = packet.Packet(msg.data)
+        arpPacket = packet.get_protocol(arp)
+
+        return arpPacket.opcode == 1
+
 
     def handleARPRequest(self, ev):
         """
