@@ -71,5 +71,6 @@ class LearningTable (object):
     def printTable(self):
         print('------------------------------')
         for item in self.macMap:
+            print('* HOST: {0}'.format(item))
             print(self.macMap[item].printProperties())
         print('------------------------------')
