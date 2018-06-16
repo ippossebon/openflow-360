@@ -19,11 +19,8 @@ class GlobalARPEntry (object):
             print("addUniqueIPForMac called with non existant MAC ADDRESS: " + str(mac_address))
             return
         else:
-            print('[addUniqueIPForMAC] mac existe.')
             if ip_address not in self.global_ARP_entry[mac_address]:
                 self.global_ARP_entry[mac_address].append(ip_address)
-                print('[addUniqueIPForMAC] tabela = ')
-                print(self.global_ARP_entry[mac_address])
 
     def isIPKnownForMAC(self, mac_address, ip_address):
         # Indica se já sabemos o IP do host em questão

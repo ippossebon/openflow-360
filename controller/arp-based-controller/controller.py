@@ -196,14 +196,8 @@ class SwitchOFController (app_manager.RyuApp):
             # Inicializa lerning table do switch
             self.learning_tables[str(switch_id)] = LearningTable()
 
-        print('[handleARPReply] tabela antes do update: ')
-        self.learning_tables[str(switch_id)].printTable()
-
         # Atualiza tabela com as informações (se existirem)
         globalARPEntry.update(arp_reply_sender_mac, arp_reply_destination_ip)
-
-        print('[handleARPReply] tabela depois do update: ')
-        self.learning_tables[str(switch_id)].printTable()
 
         self.learnDataFromPacket(switch_id, arp_reply_sender_mac, in_port, last_mile)
 
@@ -215,11 +209,7 @@ class SwitchOFController (app_manager.RyuApp):
 
 
     def learnDataFromPacket(self, switch_id, source_mac, in_port, last_mile = False):
-        print('[learnDataFromPacket] switch_id: {0}, source_mac: {1}, in_port: {2}.'.format(
-            switch_id, source_mac, in_port))
-
         if self.learning_tables[str(switch_id)].macIsKnown(source_mac):
-            print('[learnDataFromPacket] Conhece o MAC em questao. Vai colocar as infos que conseguiu')
             # É um host conhecido, vai acrescentar informações
             self.learning_tables[str(switch_id)].appendReachableThroughPort(source_mac, in_port)
 
@@ -229,12 +219,11 @@ class SwitchOFController (app_manager.RyuApp):
             self.learning_tables[str(switch_id)].setLastMile(source_mac, last_mile)
         else:
             # É um novo host, vai criar entrada na tabela
-            print('[learnDataFromPacket] Nao onhece o MAC em questao. Vai criar entrada na tabela')
             self.learning_tables[str(switch_id)].createNewEntryWithProperties(source_mac, in_port, last_mile)
 
 
     def actLikeL2Learning(self, ev):
-        print ('> actLikeL2Learning')
+        print ('>>>  PACOTE QUE NAO EH ARP')
         msg = ev.msg
         datapath = msg.datapath
         switch_id = datapath.id
@@ -246,14 +235,12 @@ class SwitchOFController (app_manager.RyuApp):
         eth = pkt.get_protocol(ethernet.ethernet)
         destination_mac = eth.dst
 
-        print('[actLikeL2Learning] pkt = {0}'.format(pkt))
-        print('[actLikeL2Learning] eth = {0}'.format(eth))
-        print('[actLikeL2Learning] destination_mac = {0}'.format(destination_mac))
-
-
         if self.learning_tables[str(switch_id)].macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
             out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, msg.in_port)
+
+            print('[actLikeL2Learning] Svwitch {0} ai mandar pacote para {1} via porta {2}'.format(
+                switch_id, destination_mac, out_port))
 
             actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
             self.forwardPacket(msg, out_port, msg.buffer_id, actions)
