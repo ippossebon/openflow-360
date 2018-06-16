@@ -49,14 +49,14 @@ class SwitchOFController (app_manager.RyuApp):
         return eth.ethertype == ether_types.ETH_TYPE_ARP
 
 
-    def forwardPacket(self, msg, port, buffer_id, action):
+    def forwardPacket(self, msg, port, buffer_id, actions):
         datapath = msg.datapath
 
         out = datapath.ofproto_parser.OFPPacketOut(
-            datapath=msg.datapath,
-            in_port=in_port,
-            buffer_id=buffer_id,
-            actions=actions
+            datapath = msg.datapath,
+            in_port = msg.match['in_port'],
+            buffer_id = buffer_id,
+            actions = actions
         )#Generate the message
         dp.send_msg(out) #Send the message to the switch
 
