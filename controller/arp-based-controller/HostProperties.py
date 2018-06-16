@@ -35,3 +35,8 @@ class HostProperties (object):
             now = datetime.datetime.now()
             if (now - self._knownIPsTimeout[ip_address]).seconds >= 1:
                 del self._knownIPsTimeout[ip_address]
+
+    def printProperties(self):
+        print('reachable_through_ports: ', self.reachable_through_ports)
+        print('last_port: ', self.last_port)
+        print('last_mile: ', self.last_mile)

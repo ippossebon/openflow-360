@@ -71,5 +71,5 @@ class LearningTable (object):
     def printTable(self):
         print('------------------------------')
         for item in self.macMap:
-            print(self.macMap[item])
+            print(self.macMap[item].printProperties())
         print('------------------------------')
