@@ -180,7 +180,7 @@ class SwitchOFController (app_manager.RyuApp):
         out_port = self.learning_table.getAnyPortToReachHost(destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
-        actions = [parser.OFPActionOutput(out_port)]
+        actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
         self.forwardPacket(msg, out_port, msg.buffer_id, actions)
 
 
@@ -212,7 +212,7 @@ class SwitchOFController (app_manager.RyuApp):
             # Decide caminho para destination_mac de acordo com a tabela
             out_port = self.learning_table.getAnyPortToReachHost(destination_mac, msg.in_port)
 
-            actions = [parser.OFPActionOutput(out_port)]
+            actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
             self.forwardPacket(msg, out_port, msg.buffer_id, actions)
 
             self.addFlow(datapath, in_port, destination_mac, )
@@ -234,7 +234,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         idle_timeout = 1
         hard_timeout = 3
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        inst = [datapath.ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
         if self.learningTable.isLastMile(destinationMAC):
             idle_timeout = 300
