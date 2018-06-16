@@ -190,16 +190,18 @@ class SwitchOFController (app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
         arp_packet = pkt.get_protocol(arp.arp)
 
-        requestor_mac = arp_packet.src_mac
+        arp_reply_sender_mac = arp_packet.src_mac
+        arp_reply_sender_ip = arp_packet.src_ip
 
-        requested_ip = arp_packet.dst_ip
+        arp_reply_destination_mac = arp_packet.dst_mac
+        arp_reply_destination_ip = arp_packet.dst_ip
+        last_mile = globalARPEntry.isNewARPFlow(arp_reply_sender_mac, arp_reply_destination_ip)
+
         in_port = msg.match['in_port']
-
-        last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
 
         print('>>>> ARP REPLY')
         print('ARP reply veio do host {0}, cujo IP eh {1}. Destino do ARP reply eh {2}, cujo IP eh {3}'.format(
-            requestor_mac, arp_packet.src_ip, arp_packet.dst_mac, arp_packet.dst_ip))
+            arp_reply_sender_mac, arp_reply_sender_ip, arp_reply_destination_mac, arp_reply_destination_ip))
 
 
         # Assumption: a primeira vez que um switch entrar em contato com o
@@ -209,12 +211,11 @@ class SwitchOFController (app_manager.RyuApp):
             self.learning_tables[str(switch_id)] = LearningTable()
 
         # Atualiza tabela com as informações (se existirem)
-        globalARPEntry.update(requestor_mac, requested_ip)
+        globalARPEntry.update(arp_reply_sender_mac, arp_reply_destination_ip)
 
-        self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
+        self.learnDataFromPacket(switch_id, arp_reply_sender_mac, in_port, last_mile)
 
-        destination_mac = arp_packet.dst_mac
-        out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, in_port)
+        out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(arp_reply_destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
         actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
