@@ -117,7 +117,7 @@ class SwitchOFController (app_manager.RyuApp):
         in_port = msg.match['in_port']
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
-        print('[handleARPRequest] Host {0} last_mile = {1} em relação ao switch {2}'.format(
+        print('[handleARPRequest] Host {0} last_mile = {1} em relacao ao switch {2}'.format(
             requestor_mac, last_mile, datapath.id))
 
 
