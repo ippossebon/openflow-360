@@ -52,7 +52,7 @@ class SwitchOFController (app_manager.RyuApp):
     def forwardPacket(self, msg, port, buffer_id, action):
         datapath = msg.datapath
 
-        out = datapath.ofp_parser.OFPPacketOut(
+        out = datapath.ofproto_parser.OFPPacketOut(
             datapath=msg.datapath,
             in_port=in_port,
             buffer_id=buffer_id,
@@ -127,7 +127,7 @@ class SwitchOFController (app_manager.RyuApp):
             self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
-            actions = [datapath.ofp_parser.OFPActionOutput(ofp.OFPP_FLOOD)]
+            actions = [datapath.ofproto_parser.OFPActionOutput(ofp.OFPP_FLOOD)]
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
 
         elif not self.learning_table.isIPKnownForMAC(requestor_mac, requested_ip):
@@ -136,7 +136,7 @@ class SwitchOFController (app_manager.RyuApp):
             self.learning_table.appendKnownIPForMAC(requestor_mac, requested_ip)
 
             # Segue com o fluxo do pacote
-            actions = [datapath.ofp_parser.OFPActionOutput(ofp.OFPP_FLOOD)]
+            actions = [datapath.ofproto_parser.OFPActionOutput(ofp.OFPP_FLOOD)]
             self.forwardPacket(msg, in_port, msg.buffer_id, actions)
         else:
             # Possivelmente, está recebendo um pacote ARP já conhecido (possível loop)
@@ -170,7 +170,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         # Switch envia ARP reply para destino na porta out_port
 
-        actions = [datapath.ofp_parser.OFPActionOutput(ofp.OFPP_FLOOD)]
+        actions = [datapath.ofproto_parser.OFPActionOutput(ofp.OFPP_FLOOD)]
         self.forwardPacket(msg, out_port, msg.buffer_id, actions)
 
 
