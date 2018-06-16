@@ -143,6 +143,11 @@ class SwitchOFController (app_manager.RyuApp):
             # estranho... por que coloca o requested_ip?
             self.learning_tables[str(switch_id)].appendKnownIPForMAC(requestor_mac, requested_ip)
 
+            print ('[handleARPRequest] learning_tables:')
+            for switch_id in self.learning_tables:
+                print('Table {0}'.format(switch_id))
+                self.learning_tables[switch_id].printTable()
+
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
             print('[handleARPRequest]: Vai encaminhar o ARP REQUEST para todas as portas.')
@@ -155,6 +160,11 @@ class SwitchOFController (app_manager.RyuApp):
 
             self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
             self.learning_tables[str(switch_id)].appendKnownIPForMAC(requestor_mac, requested_ip)
+
+            print ('[handleARPRequest] learning_tables:')
+            for switch_id in self.learning_tables:
+                print('Table {0}'.format(switch_id))
+                self.learning_tables[switch_id].printTable()
 
             # Segue com o fluxo do pacote
             actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
@@ -206,11 +216,6 @@ class SwitchOFController (app_manager.RyuApp):
 
 
     def learnDataFromPacket(self, switch_id, source_mac, in_port, last_mile = False):
-        print ('[learnDataFromPacket] learning_tables:')
-        for switch_id in self.learning_tables:
-            print('Table {0}'.format(switch_id))
-            self.learning_tables[switch_id].printTable()
-
         if self.learning_tables[str(switch_id)].macIsKnown(source_mac):
             # É um host conhecido, vai acrescentar informações
             self.learning_tables[str(switch_id)].appendReachableThroughPort(source_mac, in_port)
