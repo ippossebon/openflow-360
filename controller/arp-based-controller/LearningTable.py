@@ -67,3 +67,10 @@ class LearningTable (object):
 
     def getAnyPortToReachHost(self, mac_address, exclude_port):
         return self.getUnusedPortToHost(mac_address, exclude_port)
+
+    def printTable(self):
+        print('------------------------------')
+        for item in self.macMap:
+            print item
+        print('------------------------------')
+        
