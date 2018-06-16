@@ -45,6 +45,8 @@ class LearningTable (object):
 
     def getCandidatePorts(self, mac_address, exclude_port):
         print('[getCandidatePorts] MAC = {0}, exclude_port = {1}'.format(mac_address, exclude_port))
+        print('self.printTable: ')
+        self.printTable()
         print('self.getPropertiesForMAC(mac_address) = {0}'.format(self.getPropertiesForMAC(mac_address)))
 
         candidate_ports = list(self.getPropertiesForMAC(mac_address).reachable_through_ports)
