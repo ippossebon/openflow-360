@@ -114,7 +114,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         requestor_mac = arp_packet.src_mac
         requested_ip = arp_packet.dst_ip
-        in_port = msg.in_port
+        in_port = msg.match['in_port']
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
 
@@ -156,7 +156,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         requestor_mac = arp_packet.src_mac
         requested_ip = arp_packet.dst_ip
-        in_port = msg.in_port
+        in_port = msg.match['in_port']
 
         last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
 
