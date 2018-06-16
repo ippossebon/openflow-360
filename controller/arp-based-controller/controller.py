@@ -78,7 +78,7 @@ class SwitchOFController (app_manager.RyuApp):
         if self.isARPPacket(ev):
             self.handleARPPacket(ev)
         else:
-            actLikeL2Learning(ev)
+            self.actLikeL2Learning(ev)
 
 
     def handleARPPacket(self, ev):
