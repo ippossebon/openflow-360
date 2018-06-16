@@ -283,7 +283,6 @@ class SwitchOFController (app_manager.RyuApp):
             idle_timeout=idle_timeout,
             hard_timeout=hard_timeout,
             priority=ofproto.OFP_DEFAULT_PRIORITY,
-            actions=actions,
             instructions=inst
         )
 
