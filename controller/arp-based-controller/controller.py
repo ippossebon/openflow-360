@@ -92,7 +92,7 @@ class SwitchOFController (app_manager.RyuApp):
         parser = datapath.ofproto_parser
 
         pkt = packet.Packet(msg.data)
-        arpPacket = packet.get_protocol(arp)
+        arpPacket = pkt.get_protocol(arp.arp)
 
         return arpPacket.opcode == 1
 
