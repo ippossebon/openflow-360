@@ -54,10 +54,12 @@ class LearningTable (object):
             candidate_ports.remove(exclude_port)
         return candidate_ports
 
+    # Round Robin
     def getFirstReachableThroughPort(self, mac_address, exclude_port):
         self.getPropertiesForMAC(mac_address).reachable_through_ports.rotate(1)
         return self.getCandidatePorts(mac_address, exclude_port)[0]
 
+    # Escolha aleatória
     def getRandomReachableThroughPort(self, mac_address, exclude_port):
         candidate_ports = self.getCandidatePorts(mac_address, exclude_port)
         return random.choice(candidate_ports)
@@ -70,6 +72,7 @@ class LearningTable (object):
         chosenPort = random.choice(candidate_ports)
         return chosenPort
 
+    # Roubd robin com escolha aleatória
     def getAnyPortToReachHost(self, mac_address, exclude_port):
         return self.getUnusedPortToHost(mac_address, exclude_port)
 
