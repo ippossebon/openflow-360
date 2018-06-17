@@ -56,6 +56,7 @@ class LearningTable (object):
 
     # Round Robin
     def getFirstReachableThroughPort(self, mac_address, exclude_port):
+        # Coloca a primeira porta (utilizada na última chamada) na última posição da lista
         self.getPropertiesForMAC(mac_address).reachable_through_ports.rotate(1)
         return self.getCandidatePorts(mac_address, exclude_port)[0]
 
