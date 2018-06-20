@@ -25,9 +25,9 @@ class SwitchOFController (app_manager.RyuApp):
         self.learning_tables = {}
 
         # Para monitoramento
-        # self.datapaths = {}
-        # self.monitor_thread = hub.spawn(self._monitor)
-        # self.switch_port_statistics = {}
+        self.datapaths = {}
+        self.monitor_thread = hub.spawn(self._monitor)
+        self.switch_port_statistics = {}
 
 
     def isLLDPPacket(self, ev):
