@@ -270,7 +270,7 @@ class SwitchOFController (app_manager.RyuApp):
         datapath.send_msg(mod)
 
     """----------------------- Monitoramento de status -----------------------"""
-    def monitor(self):
+    def _monitor(self):
         while True:
             for dp in self.datapaths.values():
                 self.requestStatus(dp)
