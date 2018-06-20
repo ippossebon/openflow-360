@@ -1,11 +1,10 @@
 from ryu.base import app_manager
 from ryu.controller import ofp_event
-from ryu.controller.handler import MAIN_DISPATCHER, DEAD_DISPATCHER
+from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import ethernet, ether_types, arp, packet, ipv4
-from ryu.lib import hub
 
 from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
@@ -24,11 +23,6 @@ class SwitchOFController (app_manager.RyuApp):
         super(SwitchOFController, self).__init__(*args, **kwargs)
         # A chave do dicionário é o switch_id. Cada switch tem uma learning table associada
         self.learning_tables = {}
-
-        # Para monitoramento
-        self.datapaths = {}
-        self.monitor_thread = hub.spawn(self._monitor)
-        self.switch_port_statistics = {}
 
 
     def isLLDPPacket(self, ev):
@@ -268,48 +262,3 @@ class SwitchOFController (app_manager.RyuApp):
         )
 
         datapath.send_msg(mod)
-
-    """----------------------- Monitoramento de status -----------------------"""
-    def _monitor(self):
-        while True:
-            for dp in self.datapaths.values():
-                self.requestStatus(dp)
-            hub.sleep(10)
-
-    def requestStatus(self, datapath):
-        print('Send status request: %016x', datapath.id)
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        req = parser.OFPPortStatsRequest(datapath, 0, ofproto.OFPP_ANY)
-        datapath.send_msg(req)
-
-    @set_ev_cls(ofp_event.EventOFPPortStatsReply, MAIN_DISPATCHER)
-    def portStatusReplyHandler(self, ev):
-        body = ev.msg.body
-
-        print('[portStatusReplyHandler] datapath         port     '
-                         'rx-pkts  rx-bytes rx-error '
-                         'tx-pkts  tx-bytes tx-error')
-        print('[portStatusReplyHandler] ---------------- -------- '
-                         '-------- -------- -------- '
-                         '-------- -------- --------')
-        for stat in sorted(body, key=attrgetter('port_no')):
-            print('[portStatusReplyHandler] %016x %8x %8d %8d %8d %8d %8d %8d',
-                             ev.msg.datapath.id, stat.port_no,
-                             stat.rx_packets, stat.rx_bytes, stat.rx_errors,
-                             stat.tx_packets, stat.tx_bytes, stat.tx_errors)
-
-
-    @set_ev_cls(ofp_event.EventOFPStateChange, [MAIN_DISPATCHER, DEAD_DISPATCHER])
-    def stateChangeHandler(self, ev):
-        datapath = ev.datapath
-
-        if ev.state == MAIN_DISPATCHER:
-            if datapath.id not in self.datapaths:
-                print('[stateChangeHandler] Register datapath: %016x', datapath.id)
-                self.datapaths[datapath.id] = datapath
-        elif ev.state == DEAD_DISPATCHER:
-            if datapath.id in self.datapaths:
-                print('[stateChangeHandler] Unregister datapath: %016x', datapath.id)
-                del self.datapaths[datapath.id]
