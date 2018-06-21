@@ -286,16 +286,29 @@ class ProjectController(app_manager.RyuApp):
                 self.arp_table[src_ip] = src
                 h1 = self.hosts[src]
                 h2 = self.hosts[dst]
+
                 out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
+                print("install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst)")
+                print("install_paths({0}, {1}, {2}, {3}, {4}, {5})".format(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip))
+
                 self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
+                print("install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst)")
+                print("[reverse] install_paths({0}, {1}, {2}, {3}, {4}, {5})".format(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip))
+
             elif arp_pkt.opcode == arp.ARP_REQUEST:
                 if dst_ip in self.arp_table:
                     self.arp_table[src_ip] = src
                     dst_mac = self.arp_table[dst_ip]
                     h1 = self.hosts[src]
                     h2 = self.hosts[dst_mac]
+
                     out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
+                    print("install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst)")
+                    print("install_paths({0}, {1}, {2}, {3}, {4}, {5})".format(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip))
+
                     self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
+                    print("install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst)")
+                    print("[reverse] install_paths({0}, {1}, {2}, {3}, {4}, {5})".format(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip))
 
         # print pkt
 
