@@ -226,10 +226,7 @@ class SwitchOFController (app_manager.RyuApp):
             print('Erro! Nao conhece o host')
 
 
-    def choosePortBasedOnStatistics(self, datapath):
-        #TODO
-        self.switch_port_statistics
-        pass
+
 
 
     def printLearningTables(self):
