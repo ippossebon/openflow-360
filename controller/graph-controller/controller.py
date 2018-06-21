@@ -295,6 +295,8 @@ class ProjectController(app_manager.RyuApp):
                 print("install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst)")
                 print("[reverse] install_paths({0}, {1}, {2}, {3}, {4}, {5})".format(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip))
 
+                exit(0)
+
             elif arp_pkt.opcode == arp.ARP_REQUEST:
                 if dst_ip in self.arp_table:
                     self.arp_table[src_ip] = src
