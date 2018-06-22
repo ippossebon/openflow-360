@@ -46,6 +46,7 @@ class ProjectController(app_manager.RyuApp):
         self.adjacency = defaultdict(dict)
         self.bandwidths = defaultdict(lambda: defaultdict(lambda: DEFAULT_BW))
 
+    # Retorna todos os caminhos possíveis entre origem e destino.
     def get_paths(self, src, dst):
         '''
         Get all paths from src to dst using DFS algorithm
@@ -120,6 +121,16 @@ class ProjectController(app_manager.RyuApp):
 
 
     def install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst):
+        '''
+        1. List the paths available from source to destination.
+        2. Loop through all the switches that contain a path.
+            a. List all the ports in the switch that contains a path.
+            b. If multiple ports in the switch contain a path, create a group table flow with type select (OFPGT_SELECT), or else just install a normal flow. To create a group table, we create buckets, which means group of actions, where we must specify:
+                bucket weight: the weight of the bucket (duh),
+                watch port: the port to be watched (not needed for select group),
+                watch group: other group tables to be watched (not needed),
+                actions: your ordinary openflow action, i.e: output port.
+        '''
         computation_start = time.time()
         paths = self.get_optimal_paths(src, dst)
         pw = []
@@ -229,24 +240,6 @@ class ProjectController(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def _switch_features_handler(self, ev):
-        print("switch_features_handler is called")
-        datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        match = parser.OFPMatch()
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
-
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
-    def port_desc_stats_reply_handler(self, ev):
-        switch = ev.msg.datapath
-        for p in ev.msg.body:
-            self.bandwidths[switch.id][p.port_no] = p.curr_speed
-
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
@@ -313,6 +306,25 @@ class ProjectController(app_manager.RyuApp):
             datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
             actions=actions, data=data)
         datapath.send_msg(out)
+
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def _switch_features_handler(self, ev):
+        datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        match = parser.OFPMatch()
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        self.add_flow(datapath, 0, match, actions)
+
+    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    def port_desc_stats_reply_handler(self, ev):
+        switch = ev.msg.datapath
+        for p in ev.msg.body:
+            self.bandwidths[switch.id][p.port_no] = p.curr_speed
+            print('Armazena info de switch {0}, porta {1}: {2}'.format(switch.id, p.port_no, p.curr_speed))
 
     @set_ev_cls(event.EventSwitchEnter)
     def switch_enter_handler(self, ev):
