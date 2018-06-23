@@ -1,53 +1,251 @@
 from ryu.base import app_manager
+from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
-from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.mac import haddr_to_bin
-from ryu.lib.packet import ethernet, ether_types, arp, packet, ipv4
-
-from ryu.topology import event, switches
+from ryu.lib.packet import packet
+from ryu.lib.packet import arp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
+from ryu.lib.packet import ether_types
+from ryu.lib import mac, ip
 from ryu.topology.api import get_switch, get_link
+from ryu.app.wsgi import ControllerBase
+from ryu.topology import event
 
-from GlobalARPEntry import GlobalARPEntry
-from LearningTable import LearningTable
+from collections import defaultdict
+from operator import itemgetter
 
-globalARPEntry = GlobalARPEntry()
+import os
+import random
+import time
 
+# Cisco Reference bandwidth = 1 Gbps
+REFERENCE_BW = 10000000
 
-class SwitchOFController (app_manager.RyuApp):
+DEFAULT_BW = 10000000
 
+MAX_PATHS = 2
+
+class ProjectController(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(SwitchOFController, self).__init__(*args, **kwargs)
-        # A chave do dicionário é o switch_id. Cada switch tem uma learning table associada
-        self.learning_tables = {}
+        super(ProjectController, self).__init__(*args, **kwargs)
+        self.mac_to_port = {}
+        self.topology_api_app = self
+        self.datapath_list = {}
+        self.arp_table = {}
+        self.switches = []
+        self.hosts = {}
+        self.multipath_group_ids = {}
+        self.group_ids = []
+        self.adjacency = defaultdict(dict)
+        self.bandwidths = defaultdict(lambda: defaultdict(lambda: DEFAULT_BW))
+
+    def get_paths(self, src, dst):
+        '''
+        Get all paths from src to dst using DFS algorithm
+        '''
+        if src == dst:
+            # host target is on the same switch
+            return [[src]]
+        paths = []
+        stack = [(src, [src])]
+        while stack:
+            (node, path) = stack.pop()
+            for next in set(self.adjacency[node].keys()) - set(path):
+                if next is dst:
+                    paths.append(path + [next])
+                else:
+                    stack.append((next, path + [next]))
+        print("Available paths from {0} to {1}: {2}".format(src, dst, paths))
+        return paths
+
+    def get_link_cost(self, s1, s2):
+        '''
+        Get the link cost between two switches
+        '''
+        e1 = self.adjacency[s1][s2]
+        e2 = self.adjacency[s2][s1]
+        bl = min(self.bandwidths[s1][e1], self.bandwidths[s2][e2])
+        ew = REFERENCE_BW/bl
+        return ew
+
+    def get_path_cost(self, path):
+        '''
+        Get the path cost
+        '''
+        cost = 0
+        for i in range(len(path) - 1):
+            cost += self.get_link_cost(path[i], path[i+1])
+        return cost
+
+    def get_optimal_paths(self, src, dst):
+        '''
+        Get the n-most optimal paths according to MAX_PATHS
+        '''
+        paths = self.get_paths(src, dst)
+        paths_count = len(paths) if len(
+            paths) < MAX_PATHS else MAX_PATHS
+        return sorted(paths, key=lambda x: self.get_path_cost(x))[0:(paths_count)]
+
+    def add_ports_to_paths(self, paths, first_port, last_port):
+        '''
+        Add the ports that connects the switches for all paths
+        '''
+        paths_p = []
+        for path in paths:
+            p = {}
+            in_port = first_port
+            for s1, s2 in zip(path[:-1], path[1:]):
+                out_port = self.adjacency[s1][s2]
+                p[s1] = (in_port, out_port)
+                in_port = self.adjacency[s2][s1]
+            p[path[-1]] = (in_port, last_port)
+            paths_p.append(p)
+        return paths_p
+
+    def generate_openflow_gid(self):
+        '''
+        Returns a random OpenFlow group id
+        '''
+        n = random.randint(0, 2**32)
+        while n in self.group_ids:
+            n = random.randint(0, 2**32)
+        return n
 
 
-    def isLLDPPacket(self, ev):
-        msg = ev.msg
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
+    def install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst):
+        computation_start = time.time()
+        paths = self.get_optimal_paths(src, dst)
+        pw = []
+        for path in paths:
+            pw.append(self.get_path_cost(path))
+            print("{0} cost = {1}".format(path, pw[len(pw) - 1]))
+        sum_of_pw = sum(pw) * 1.0
+        paths_with_ports = self.add_ports_to_paths(paths, first_port, last_port)
+        switches_in_paths = set().union(*paths)
 
-        return eth.ethertype == ether_types.ETH_TYPE_LLDP
+        for node in switches_in_paths:
 
-    def isARPPacket(self, ev):
-        msg = ev.msg
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
+            dp = self.datapath_list[node]
+            ofp = dp.ofproto
+            ofp_parser = dp.ofproto_parser
 
-        return eth.ethertype == ether_types.ETH_TYPE_ARP
+            ports = defaultdict(list)
+            actions = []
+            i = 0
 
-    def forwardPacket(self, msg, port, buffer_id, actions):
-        datapath = msg.datapath
-        out = datapath.ofproto_parser.OFPPacketOut(
-            datapath = msg.datapath,
-            in_port = msg.match['in_port'],
-            buffer_id = buffer_id,
-            actions = actions
-        )
-        datapath.send_msg(out) #Send the message to the switch
+            for path in paths_with_ports:
+                if node in path:
+                    in_port = path[node][0]
+                    out_port = path[node][1]
+                    if (out_port, pw[i]) not in ports[in_port]:
+                        ports[in_port].append((out_port, pw[i]))
+                i += 1
+
+            for in_port in ports:
+
+                match_ip = ofp_parser.OFPMatch(
+                    eth_type=0x0800,
+                    ipv4_src=ip_src,
+                    ipv4_dst=ip_dst
+                )
+                match_arp = ofp_parser.OFPMatch(
+                    eth_type=0x0806,
+                    arp_spa=ip_src,
+                    arp_tpa=ip_dst
+                )
+
+                out_ports = ports[in_port]
+                # print out_ports
+
+                if len(out_ports) > 1:
+                    group_id = None
+                    group_new = False
+
+                    if (node, src, dst) not in self.multipath_group_ids:
+                        group_new = True
+                        self.multipath_group_ids[
+                            node, src, dst] = self.generate_openflow_gid()
+                    group_id = self.multipath_group_ids[node, src, dst]
+
+                    buckets = []
+                    # print "node at ",node," out ports : ",out_ports
+                    for port, weight in out_ports:
+                        bucket_weight = int(round((1 - weight/sum_of_pw) * 10))
+                        bucket_action = [ofp_parser.OFPActionOutput(port)]
+                        buckets.append(
+                            ofp_parser.OFPBucket(
+                                weight=bucket_weight,
+                                watch_port=port,
+                                watch_group=ofp.OFPG_ANY,
+                                actions=bucket_action
+                            )
+                        )
+
+                    if group_new:
+                        req = ofp_parser.OFPGroupMod(
+                            dp, ofp.OFPGC_ADD, ofp.OFPGT_SELECT, group_id,
+                            buckets
+                        )
+                        dp.send_msg(req)
+                    else:
+                        req = ofp_parser.OFPGroupMod(
+                            dp, ofp.OFPGC_MODIFY, ofp.OFPGT_SELECT,
+                            group_id, buckets)
+                        dp.send_msg(req)
+
+                    actions = [ofp_parser.OFPActionGroup(group_id)]
+
+                    self.add_flow(dp, 32768, match_ip, actions)
+                    self.add_flow(dp, 1, match_arp, actions)
+
+                elif len(out_ports) == 1:
+                    actions = [ofp_parser.OFPActionOutput(out_ports[0][0])]
+
+                    self.add_flow(dp, 32768, match_ip, actions)
+                    self.add_flow(dp, 1, match_arp, actions)
+        print("Path installation finished in {0}".format(time.time() - computation_start))
+        return paths_with_ports[0][src][1]
+
+    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+        # print "Adding flow ", match, actions
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+                                    priority=priority, match=match,
+                                    instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+                                    match=match, instructions=inst)
+        datapath.send_msg(mod)
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def _switch_features_handler(self, ev):
+        print("switch_features_handler is called")
+        datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        match = parser.OFPMatch()
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        self.add_flow(datapath, 0, match, actions)
+
+    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    def port_desc_stats_reply_handler(self, ev):
+        switch = ev.msg.datapath
+        for p in ev.msg.body:
+            self.bandwidths[switch.id][p.port_no] = p.curr_speed
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -55,209 +253,104 @@ class SwitchOFController (app_manager.RyuApp):
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
-
-        # Ignora pacotes LLDP (Link descovery)
-        if self.isLLDPPacket(ev):
-            return
-
-        if self.isARPPacket(ev):
-            self.handleARPPacket(ev)
-        else:
-            self.actLikeL2Learning(ev)
-
-
-    def handleARPPacket(self, ev):
-        if self.isARPRequest(ev):
-            self.handleARPRequest(ev)
-        else:
-            self.handleARPReply(ev)
-
-
-    def isARPRequest(self, ev):
-        msg = ev.msg
-        pkt = packet.Packet(msg.data)
-        arpPacket = pkt.get_protocol(arp.arp)
-
-        return arpPacket.opcode == 1
-
-
-    def handleARPRequest(self, ev):
-        """
-        Na primeira vez que o controlador tiver contato com um novo fluxo,
-        obrigatoriamente, quem enviou este pacote foi o switch que está ligado
-        diretamente com o host que enviou o pacote ARP. Isto é, tem conexão direta
-        o host e o switch em questão e, portanto, last_mile = true. Caso contrário,
-        será false.
-        """
-        msg = ev.msg
-        datapath = msg.datapath
-        switch_id = datapath.id
-        pkt = packet.Packet(msg.data)
-        arp_packet = pkt.get_protocol(arp.arp)
-
-        requestor_mac = arp_packet.src_mac
-        requested_ip = arp_packet.dst_ip
-        in_port = msg.match['in_port']
-
-        last_mile = globalARPEntry.isNewARPFlow(requestor_mac, requested_ip)
-
-        # Assumption: a primeira vez que um switch entrar em contato com o
-        # controlador, será por causa de um ARP request/reply
-        if str(switch_id) not in self.learning_tables:
-            # Inicializa lerning table do switch
-            self.learning_tables[str(switch_id)] = LearningTable()
-
-
-        globalARPEntry.update(requestor_mac, requested_ip)
-
-        print('[handleARPRequest] Host {0} querendo saber quem tem o IP {1}'.format(requestor_mac, requested_ip))
-
-        if not self.learning_tables[str(switch_id)].macIsKnown(requestor_mac):
-            # Para este switch, é um host novo
-            print('[handleARPRequest]: para o switch {0} eh um host novo.'.format(switch_id))
-
-            self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
-
-            self.learning_tables[str(switch_id)].appendKnownIPForMAC(requestor_mac, requested_ip)
-
-            # Segue com o fluxo do pacote
-            actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
-            self.forwardPacket(msg, in_port, msg.buffer_id, actions)
-
-        elif not self.learning_tables[str(switch_id)].isIPKnownForMAC(requestor_mac, requested_ip):
-            # Este é um host já conhecido, fazendo um novo ARP Request
-            print('[handleARPRequest]: para o switch {0} eh um host conhecido fazendo um ARP.'.format(switch_id))
-
-            self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
-            self.learning_tables[str(switch_id)].appendKnownIPForMAC(requestor_mac, requested_ip)
-
-            # Segue com o fluxo do pacote
-            actions = [datapath.ofproto_parser.OFPActionOutput(datapath.ofproto.OFPP_FLOOD)]
-            self.forwardPacket(msg, in_port, msg.buffer_id, actions)
-        else:
-            # Possivelmente, está recebendo um pacote ARP já conhecido (possível loop)
-            if not self.learning_tables[str(switch_id)].isLastMile(requestor_mac):
-                # Se o request foi feito por um host que não tem ligação direta com o switch
-                self.learnDataFromPacket(switch_id, requestor_mac, in_port, last_mile)
-            print('[handleARPRequest]: Dropa pacote')
-            return
-
-
-    def handleARPReply(self, ev):
-        msg = ev.msg
-        datapath = msg.datapath
-        switch_id = datapath.id
-        pkt = packet.Packet(msg.data)
-        arp_packet = pkt.get_protocol(arp.arp)
-        in_port = msg.match['in_port']
-
-        arp_reply_sender_mac = arp_packet.src_mac
-        arp_reply_sender_ip = arp_packet.src_ip
-
-        arp_reply_destination_mac = arp_packet.dst_mac
-        arp_reply_destination_ip = arp_packet.dst_ip
-        last_mile = globalARPEntry.isNewARPFlow(arp_reply_sender_mac, arp_reply_destination_ip)
-
-        print('>>> ARP REPLY do host {0} para {1}'.format(
-            arp_reply_sender_mac, arp_reply_destination_mac))
-
-        # Assumption: a primeira vez que um switch entrar em contato com o
-        # controlador, será por causa de um ARP request/reply
-        if str(switch_id) not in self.learning_tables:
-            # Inicializa lerning table do switch
-            self.learning_tables[str(switch_id)] = LearningTable()
-
-        # Atualiza tabela com as informações (se existirem)
-        globalARPEntry.update(arp_reply_sender_mac, arp_reply_destination_ip)
-
-        self.learnDataFromPacket(switch_id, arp_reply_sender_mac, in_port, last_mile)
-
-        out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(arp_reply_destination_mac, in_port)
-
-        # Switch envia ARP reply para destino na porta out_port
-        actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-        self.forwardPacket(msg, out_port, msg.buffer_id, actions)
-
-
-    def learnDataFromPacket(self, switch_id, source_mac, in_port, last_mile = False):
-        if self.learning_tables[str(switch_id)].macIsKnown(source_mac):
-            # É um host conhecido, vai acrescentar informações
-            self.learning_tables[str(switch_id)].appendReachableThroughPort(source_mac, in_port)
-
-            if last_mile == False and self.learning_tables[str(switch_id)].isLastMile(source_mac):
-                last_mile = True
-
-            self.learning_tables[str(switch_id)].setLastMile(source_mac, last_mile)
-        else:
-            # É um novo host, vai criar entrada na tabela
-            self.learning_tables[str(switch_id)].createNewEntryWithProperties(source_mac, in_port, last_mile)
-
-
-    def actLikeL2Learning(self, ev):
-        msg = ev.msg
-        datapath = msg.datapath
-        switch_id = datapath.id
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        destination_mac = eth.dst
-        source_mac = eth.src
+        arp_pkt = pkt.get_protocol(arp.arp)
 
-        if self.learning_tables[str(switch_id)].macIsKnown(destination_mac):
+        # avoid broadcast from LLDP
+        if eth.ethertype == 35020:
+            return
 
+        if pkt.get_protocol(ipv6.ipv6):  # Drop the IPV6 Packets.
+            match = parser.OFPMatch(eth_type=eth.ethertype)
+            actions = []
+            self.add_flow(datapath, 1, match, actions)
+            return None
 
-            # Decide caminho para destination_mac de acordo com a tabela
-            out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, in_port)
+        dst = eth.dst
+        src = eth.src
+        dpid = datapath.id
 
-            print('[actLikeL2Learning] Switch {0} vai mandar pacote para {1} via porta {2}'.format(
-                switch_id, destination_mac, out_port))
+        if src not in self.hosts:
+            self.hosts[src] = (dpid, in_port)
 
-            actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-            self.forwardPacket(msg, out_port, msg.buffer_id, actions)
+        out_port = ofproto.OFPP_FLOOD
 
-            self.addFlow(datapath, in_port, destination_mac, source_mac, actions)
-        else:
-            print('Erro! Nao conhece o host')
+        if arp_pkt:
+            # print dpid, pkt
+            src_ip = arp_pkt.src_ip
+            dst_ip = arp_pkt.dst_ip
+            if arp_pkt.opcode == arp.ARP_REPLY:
+                self.arp_table[src_ip] = src
+                h1 = self.hosts[src]
+                h2 = self.hosts[dst]
 
+                out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
 
+                self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
 
+            elif arp_pkt.opcode == arp.ARP_REQUEST:
+                if dst_ip in self.arp_table:
+                    self.arp_table[src_ip] = src
+                    dst_mac = self.arp_table[dst_ip]
+                    h1 = self.hosts[src]
+                    h2 = self.hosts[dst_mac]
 
+                    out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
+                    self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
 
-    def printLearningTables(self):
-        for switch_id in self.learning_tables:
-            print('Table {0}'.format(switch_id))
-            self.learning_tables[switch_id].printTable()
+        # print pkt
 
+        actions = [parser.OFPActionOutput(out_port)]
 
-    """ Instala fluxo no switch. Isto é, envia mensagem de FlowMod. """
-    def addFlow(self, datapath, in_port, dst, src, actions):
-        switch_id = datapath.id
-        ofproto = datapath.ofproto
+        data = None
+        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+            data = msg.data
 
-        match = datapath.ofproto_parser.OFPMatch(in_port=in_port, eth_dst=dst)
-        inst = [datapath.ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        out = parser.OFPPacketOut(
+            datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
+            actions=actions, data=data)
+        datapath.send_msg(out)
 
-        idle_timeout = 1
-        hard_timeout = 3
+    @set_ev_cls(event.EventSwitchEnter)
+    def switch_enter_handler(self, ev):
+        switch = ev.switch.dp
+        ofp_parser = switch.ofproto_parser
 
-        if self.learning_tables[str(switch_id)].isLastMile(dst):
-            idle_timeout = 300 # 5 minutos
-            hard_timeout = 600 # 10 minutos
+        if switch.id not in self.switches:
+            self.switches.append(switch.id)
+            self.datapath_list[switch.id] = switch
 
-        mod = datapath.ofproto_parser.OFPFlowMod(
-            datapath=datapath,
-            match=match,
-            command=ofproto.OFPFC_ADD,
-            idle_timeout=idle_timeout,
-            hard_timeout=hard_timeout,
-            priority=ofproto.OFP_DEFAULT_PRIORITY,
-            instructions=inst
-        )
+            # Request port/link descriptions, useful for obtaining bandwidth
+            req = ofp_parser.OFPPortDescStatsRequest(switch)
+            switch.send_msg(req)
 
-        datapath.send_msg(mod)
+    @set_ev_cls(event.EventSwitchLeave, MAIN_DISPATCHER)
+    def switch_leave_handler(self, ev):
+        print(ev)
+        switch = ev.switch.dp.id
+        if switch in self.switches:
+            self.switches.remove(switch)
+            del self.datapath_list[switch]
+            del self.adjacency[switch]
+
+    @set_ev_cls(event.EventLinkAdd, MAIN_DISPATCHER)
+    def link_add_handler(self, ev):
+        print('link_add_handler')
+        s1 = ev.link.src
+        s2 = ev.link.dst
+        self.adjacency[s1.dpid][s2.dpid] = s1.port_no
+        self.adjacency[s2.dpid][s1.dpid] = s2.port_no
+
+    @set_ev_cls(event.EventLinkDelete, MAIN_DISPATCHER)
+    def link_delete_handler(self, ev):
+        s1 = ev.link.src
+        s2 = ev.link.dst
+        # Exception handling if switch already deleted
+        try:
+            del self.adjacency[s1.dpid][s2.dpid]
+            del self.adjacency[s2.dpid][s1.dpid]
+        except KeyError:
+            pass
