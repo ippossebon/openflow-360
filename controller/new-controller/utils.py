@@ -6,8 +6,8 @@ from collections import defaultdict
 # Cisco Reference bandwidth = 1 Gbps
 REFERENCE_BW = 10000000
 
-FIRST_PORT = True
-MIN_HOPS = False
+FIRST_PORT = False
+MIN_HOPS = True
 RANDOM = False
 
 class ControllerUtilities(object):
