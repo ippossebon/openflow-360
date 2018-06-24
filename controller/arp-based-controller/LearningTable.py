@@ -14,7 +14,7 @@ class LearningTable (object):
             return self.macMap[mac_address]
 
     def macIsKnown(self, mac_address):
-        print('[macIsKnown] para MAC = {0}'.format(mac_address))
+        #print('[macIsKnown] para MAC = {0}'.format(mac_address))
         self.printTable()
         return mac_address in self.macMap
 
@@ -46,7 +46,7 @@ class LearningTable (object):
         return self.getPropertiesForMAC(mac_address).last_mile
 
     def getCandidatePorts(self, mac_address, exclude_port):
-        print('[getCandidatePorts] MAC = {0}, exclude_port = {1}'.format(mac_address, exclude_port))
+        #print('[getCandidatePorts] MAC = {0}, exclude_port = {1}'.format(mac_address, exclude_port))
         self.printTable()
 
         candidate_ports = list(self.getPropertiesForMAC(mac_address).reachable_through_ports)
