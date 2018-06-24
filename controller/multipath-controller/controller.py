@@ -322,7 +322,7 @@ class ProjectController(app_manager.RyuApp):
             self.switches.append(switch.id)
             self.datapath_list[switch.id] = switch
 
-            # Request port/link descriptions, useful for obtaining bandwidth
+            # Pede informações de porta/link para o switch
             req = ofp_parser.OFPPortDescStatsRequest(switch)
             switch.send_msg(req)
 

@@ -46,6 +46,7 @@ class ProjectController(app_manager.RyuApp):
         self.adjacency = defaultdict(dict)
         self.bandwidths = defaultdict(lambda: defaultdict(lambda: DEFAULT_BW))
 
+    # Retorna todos os caminhos possíveis entre origem e destino.
     def get_paths(self, src, dst):
         '''
         Get all paths from src to dst using DFS algorithm
@@ -118,11 +119,86 @@ class ProjectController(app_manager.RyuApp):
             n = random.randint(0, 2**32)
         return n
 
+    def minimumDistance(distance, Q):
+        min = float('Inf')
+        node = 0
+
+        for v in Q:
+            if distance[v] < min:
+                min = distance[v]
+                node = v
+        return node
+
+    def dijkstra(self, src, dst, first_port, final_port):
+        distance = {}
+        previous = {}
+
+        for dpid in self.switches:
+            distance[dpid] = float('Inf')
+            previous[dpid] = None
+
+        distance[src]=0
+        Q = set(switches)
+        print("Q = {0}".format(Q))
+
+        while len(Q) > 0:
+            u = minimum_distance(distance, Q)
+            Q.remove(u)
+
+            for p in switches:
+                if adjacency[u][p] != None:
+                    w = 1
+                if distance[u] + w < distance[p]:
+                    distance[p] = distance[u] + w
+                    previous[p] = u
+
+        r = []
+        p = dst
+        r.append(p)
+        q = previous[p]
+
+        while q is not None:
+            if q == src:
+                r.append(q)
+                break
+            p=q
+            r.append(p)
+            q=previous[p]
+            r.reverse()
+
+            if src == dst:
+                path=[src]
+            else:
+                path=r
+
+        # Now add the ports
+        r = []
+        in_port = first_port
+
+        for s1, s2 in zip(path[:-1],path[1:]):
+            out_port = adjacency[s1][s2]
+            r.append((s1,in_port,out_port))
+            in_port = adjacency[s2][s1]
+
+        r.append((dst,in_port,final_port))
+        # r is the minimum path
+        return r
+
 
     def install_paths(self, src, first_port, dst, last_port, ip_src, ip_dst):
+        '''
+        1. List the paths available from source to destination.
+        2. Loop through all the switches that contain a path.
+            a. List all the ports in the switch that contains a path.
+            b. If multiple ports in the switch contain a path, create a group table flow with type select (OFPGT_SELECT), or else just install a normal flow. To create a group table, we create buckets, which means group of actions, where we must specify:
+                bucket weight: the weight of the bucket (duh),
+                watch port: the port to be watched (not needed for select group),
+                watch group: other group tables to be watched (not needed),
+                actions: your ordinary openflow action, i.e: output port.
+        '''
         computation_start = time.time()
-        paths = self.get_optimal_paths(src, dst)
-        pw = []
+        paths = [self.dijkstra(src, dst, first_port, last_port)]
+
         for path in paths:
             pw.append(self.get_path_cost(path))
             print("{0} cost = {1}".format(path, pw[len(pw) - 1]))
@@ -229,24 +305,6 @@ class ProjectController(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def _switch_features_handler(self, ev):
-        print("switch_features_handler is called")
-        datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        match = parser.OFPMatch()
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
-
-    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
-    def port_desc_stats_reply_handler(self, ev):
-        switch = ev.msg.datapath
-        for p in ev.msg.body:
-            self.bandwidths[switch.id][p.port_no] = p.curr_speed
-
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
@@ -286,14 +344,18 @@ class ProjectController(app_manager.RyuApp):
                 self.arp_table[src_ip] = src
                 h1 = self.hosts[src]
                 h2 = self.hosts[dst]
+
                 out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
+
                 self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
+
             elif arp_pkt.opcode == arp.ARP_REQUEST:
                 if dst_ip in self.arp_table:
                     self.arp_table[src_ip] = src
                     dst_mac = self.arp_table[dst_ip]
                     h1 = self.hosts[src]
                     h2 = self.hosts[dst_mac]
+
                     out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
                     self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
 
@@ -309,6 +371,25 @@ class ProjectController(app_manager.RyuApp):
             datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
             actions=actions, data=data)
         datapath.send_msg(out)
+
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def _switch_features_handler(self, ev):
+        datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        match = parser.OFPMatch()
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        self.add_flow(datapath, 0, match, actions)
+
+    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    def port_desc_stats_reply_handler(self, ev):
+        switch = ev.msg.datapath
+        for p in ev.msg.body:
+            self.bandwidths[switch.id][p.port_no] = p.curr_speed
+            print('Armazena info de switch {0}, porta {1}: {2}'.format(switch.id, p.port_no, p.curr_speed))
 
     @set_ev_cls(event.EventSwitchEnter)
     def switch_enter_handler(self, ev):
