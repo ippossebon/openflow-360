@@ -99,22 +99,6 @@ class ControllerUtilities(object):
         return final_path
 
 
-    def getBestPath(self, src, first_port, dst, last_port):
-        path = self.choosePathAccordingToHeuristic(src, dst)
-
-        # --- Gambiarra ---
-        list_path = []
-        list_path.append(path)
-        # -------
-
-        path_with_ports = self.addPortsToPath(list_path, first_port, last_port)
-        print('path_with_ports = {0}'.format(path_with_ports))
-
-        # Lista de todos os switches que fazem parte do caminho ótimo
-        switches_in_paths = set().union(*paths)
-
-        print('[getBestPath] switches_in_paths = {0}'.format(switches_in_paths))
-
 
     # Instala todos os caminhos possíveis, de uma só vez.
     def installPaths(self, src, first_port, dst, last_port, ip_src, ip_dst):
@@ -127,7 +111,20 @@ class ControllerUtilities(object):
         ip_dst = IP do host de destino
         '''
         computation_start = time.time()
-        chosen_path = self.getBestPath(src, first_port, dst, last_port)
+        path = self.choosePathAccordingToHeuristic(src, dst)
+
+        # --- Gambiarra ---
+        list_path = []
+        list_path.append(path)
+        # -------
+
+        path_with_ports = self.addPortsToPath(list_path, first_port, last_port)
+        print('path_with_ports = {0}'.format(path_with_ports))
+
+        # Lista de todos os switches que fazem parte do caminho ótimo
+        switches_in_path = set().union(*list_path)
+
+        print('[getBestPath] switches_in_path = {0}'.format(switches_in_path))
 
         exit(1)
 
