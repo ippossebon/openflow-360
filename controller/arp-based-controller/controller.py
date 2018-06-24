@@ -175,7 +175,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         self.learnDataFromPacket(switch_id, arp_reply_sender_mac, in_port, last_mile)
 
-        out_port = self.learning_tables[str(switch_id)].getFirstReachableThroughPort(arp_reply_destination_mac, in_port)
+        out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(arp_reply_destination_mac, in_port)
 
         # Switch envia ARP reply para destino na porta out_port
         actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
@@ -211,7 +211,7 @@ class SwitchOFController (app_manager.RyuApp):
 
         if self.learning_tables[str(switch_id)].macIsKnown(destination_mac):
             # Decide caminho para destination_mac de acordo com a tabela
-            out_port = self.learning_tables[str(switch_id)].getFirstReachableThroughPort(destination_mac, in_port)
+            out_port = self.learning_tables[str(switch_id)].getAnyPortToReachHost(destination_mac, in_port)
 
             print('[actLikeL2Learning] Switch {0} vai mandar pacote para {1} via porta {2}'.format(
                 switch_id, destination_mac, out_port))
