@@ -258,7 +258,7 @@ class HybridController(app_manager.RyuApp):
         ip_dst = IP do host de destino
         '''
         computation_start = time.time()
-        path = self.controller_utilities_initialized.choosePathAccordingToHeuristic(src, dst)
+        path = self.controller_utilities.choosePathAccordingToHeuristic(src, dst)
 
         print('[installPaths] chosen path = {0}'.format(path))
 
@@ -267,7 +267,7 @@ class HybridController(app_manager.RyuApp):
         list_path.append(path)
         # -------
 
-        path_with_ports = self.controller_utilities_initialized.addPortsToPath(list_path, first_port, last_port)
+        path_with_ports = self.controller_utilities.addPortsToPath(list_path, first_port, last_port)
         print('path_with_ports = {0}'.format(path_with_ports))
 
         # Lista de todos os switches que fazem parte do caminho ótimo
