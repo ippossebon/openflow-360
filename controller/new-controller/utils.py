@@ -61,7 +61,7 @@ class ControllerUtilities(object):
         Add the ports that connects the switches for all paths
         '''
         print('paths = {0}'.format(paths))
-        
+
         paths_p = []
         for path in paths:
             p = {}
@@ -91,7 +91,7 @@ class ControllerUtilities(object):
 
         # De acordo com a heuristica escolhida:
         # 1. Pega o primeiro caminho
-        return path[0]
+        return paths[0]
 
         # 2. Pega caminho randomico
         # 3. Pega primeiro caminho com menor numero de hops
