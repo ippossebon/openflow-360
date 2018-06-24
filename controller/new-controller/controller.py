@@ -178,7 +178,7 @@ class HybridController(app_manager.RyuApp):
                 dest_switch_port = h2[1]
 
                 # Retorna a porta para qual deve ser enviado o flow
-                out_port = self.controller_utilities.install_paths(
+                out_port = self.controller_utilities.installPaths(
                     source_switch_id,
                     source_switch_port,
                     dest_switch_id,
@@ -188,7 +188,7 @@ class HybridController(app_manager.RyuApp):
                 )
 
                 # Instala caminho reverso
-                self.controller_utilities.install_paths(
+                self.controller_utilities.installPaths(
                     dest_switch_id,
                     dest_switch_port,
                     source_switch_id,
@@ -211,7 +211,7 @@ class HybridController(app_manager.RyuApp):
                     dest_switch_port = h2[1]
 
                     # Retorna a porta para qual deve ser enviado o flow
-                    out_port = self.controller_utilities.install_paths(
+                    out_port = self.controller_utilities.installPaths(
                         source_switch_id,
                         source_switch_port,
                         dest_switch_id,
@@ -221,7 +221,7 @@ class HybridController(app_manager.RyuApp):
                     )
 
                     # Instala caminho reverso
-                    self.controller_utilities.install_paths(
+                    self.controller_utilities.installPaths(
                         dest_switch_id,
                         dest_switch_port,
                         source_switch_id,
