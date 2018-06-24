@@ -119,7 +119,7 @@ class ProjectController(app_manager.RyuApp):
             n = random.randint(0, 2**32)
         return n
 
-    def minimumDistance(distance, Q):
+    def minimumDistance(self, distance, Q):
         min = float('Inf')
         node = 0
 
