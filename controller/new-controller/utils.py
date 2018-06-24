@@ -56,21 +56,22 @@ class ControllerUtilities(object):
         return cost
 
 
-    def addPortsToPath(self, path, first_port, last_port):
+    def addPortsToPath(self, paths, first_port, last_port):
         '''
-        Retorna uma lista com as portas associadas a cada switch no caminho
+        Add the ports that connects the switches for all paths
         '''
-        p = {}
-        in_port = first_port
-
-        for s1, s2 in zip(path[:-1], path[1:]):
-            out_port = self.adjacency[s1][s2]
-            p[s1] = (in_port, out_port)
-            in_port = self.adjacency[s2][s1]
+        paths_p = []
+        for path in paths:
+            p = {}
+            in_port = first_port
+            for s1, s2 in zip(path[:-1], path[1:]):
+                out_port = self.adjacency[s1][s2]
+                p[s1] = (in_port, out_port)
+                in_port = self.adjacency[s2][s1]
             p[path[-1]] = (in_port, last_port)
+            paths_p.append(p)
 
-        print('[addPortsToPaths] retornou p = {0}'.format(p))
-        return p
+        return paths_p[0]
 
 
     def choosePathAccordingToHeuristic(self, src, dst):
@@ -91,13 +92,15 @@ class ControllerUtilities(object):
         return path[0]
 
         # 2. Pega caminho randomico
-        # 3. Pega caminho com menor numero de hops
+        # 3. Pega primeiro caminho com menor numero de hops
 
 
 
     def getBestPath(self, src, first_port, dst, last_port):
         path = self.choosePathAccordingToHeuristic(src, dst)
-        path_with_ports = self.addPortsToPath(path, first_port, last_port)
+
+        path_with_ports = self.addPortsToPath([path], first_port, last_port)
+        print('path_with_ports = {0}'.format(path_with_ports))
 
         # Lista de todos os switches que fazem parte do caminho ótimo
         switches_in_paths = set().union(*paths)
