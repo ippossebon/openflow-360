@@ -86,7 +86,7 @@ class ControllerUtilities(object):
         for path in paths:
             paths_cost.append(self.getPathCost(path))
 
-        index_min = paths.index(min(values.index(min(values))))
+        index_min = paths_cost.index(min(paths_cost))
 
         return paths[index_min]
 
