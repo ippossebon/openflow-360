@@ -91,7 +91,8 @@ class ControllerUtilities(object):
 
         # De acordo com a heuristica escolhida:
         # 1. Pega o primeiro caminho
-        return paths[0]
+        print('[choosePathAccordingToHeuristic] paths = {0}'.format(0))
+        return paths
 
         # 2. Pega caminho randomico
         # 3. Pega primeiro caminho com menor numero de hops
@@ -100,10 +101,6 @@ class ControllerUtilities(object):
 
     def getBestPath(self, src, first_port, dst, last_port):
         path = self.choosePathAccordingToHeuristic(src, dst)
-
-        # Gambiarra
-        list_path = []
-        list_path.append(path)
 
         path_with_ports = self.addPortsToPath(list_path, first_port, last_port)
         print('path_with_ports = {0}'.format(path_with_ports))
