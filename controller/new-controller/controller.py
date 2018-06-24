@@ -19,6 +19,8 @@ from ryu.topology import event
 from collections import defaultdict
 from operator import itemgetter
 
+from utils import ControllerUtilities
+
 import os
 import random
 import time
@@ -31,14 +33,16 @@ class HybridController(app_manager.RyuApp):
         super(HybridController, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         self.topology_api_app = self
-        self.datapath_list = {} # dicionário cuja chave é o ID do switch e o valor é datapath correspondente
-        self.arp_table = {}
-        self.switches = [] # lista com IDs de todos os switches da rede
-        self.hosts = {}
+        self.datapath_list = {}         # dicionário cuja chave é o ID do switch e o valor é datapath correspondente
+        self.arp_table = {}             # arp table do tipo arp_table[IP] = MAC
+        self.switches = []              # lista com IDs de todos os switches da rede
+        self.hosts = {}                 # hosts{MAC} = (switch_id, porta que conecta ao swith)
         self.multipath_group_ids = {}
         self.group_ids = []
         self.adjacency = defaultdict(dict)
         self.bandwidths = defaultdict(lambda: defaultdict(lambda: DEFAULT_BW))
+
+        self.controller_utilities_initialized = False
 
 
     @set_ev_cls(event.EventSwitchEnter)
@@ -122,6 +126,11 @@ class HybridController(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
+
+        if not self.controller_utilities_initialized:
+            self.controller_utilities = ControllerUtilities(self.adjacency, self.datapath_list)
+            self.controller_utilities_initialized = True
+
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -153,33 +162,73 @@ class HybridController(app_manager.RyuApp):
         out_port = ofproto.OFPP_FLOOD
 
         if arp_pkt:
-            # print dpid, pkt
             src_ip = arp_pkt.src_ip
             dst_ip = arp_pkt.dst_ip
 
             if arp_pkt.opcode == arp.ARP_REPLY:
                 self.arp_table[src_ip] = src
+
+                # Hosts é um dicionário do tipo hosts[MAC_ADDRESS] = (switch_id, porta que conecta ao switch)
                 h1 = self.hosts[src]
                 h2 = self.hosts[dst]
 
-                print("Hosts: {0}".format(self.hosts))
-                exit(1)
+                source_switch_id = h1[0]
+                source_switch_port = h1[1]
+                dest_switch_id = h2[0]
+                dest_switch_port = h2[1]
 
-                out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
+                # Retorna a porta para qual deve ser enviado o flow
+                out_port = self.controller_utilities.install_paths(
+                    source_switch_id,
+                    source_switch_port,
+                    dest_switch_id,
+                    dest_switch_port,
+                    src_ip,
+                    dst_ip
+                )
 
-                self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
+                # Instala caminho reverso
+                self.controller_utilities.install_paths(
+                    dest_switch_id,
+                    dest_switch_port,
+                    source_switch_id,
+                    source_switch_port,
+                    dst_ip,
+                    src_ip
+                )
 
             elif arp_pkt.opcode == arp.ARP_REQUEST:
                 if dst_ip in self.arp_table:
                     self.arp_table[src_ip] = src
                     dst_mac = self.arp_table[dst_ip]
+
                     h1 = self.hosts[src]
                     h2 = self.hosts[dst_mac]
 
-                    out_port = self.install_paths(h1[0], h1[1], h2[0], h2[1], src_ip, dst_ip)
-                    self.install_paths(h2[0], h2[1], h1[0], h1[1], dst_ip, src_ip) # reverse
+                    source_switch_id = h1[0]
+                    source_switch_port = h1[1]
+                    dest_switch_id = h2[0]
+                    dest_switch_port = h2[1]
 
-        # print pkt
+                    # Retorna a porta para qual deve ser enviado o flow
+                    out_port = self.controller_utilities.install_paths(
+                        source_switch_id,
+                        source_switch_port,
+                        dest_switch_id,
+                        dest_switch_port,
+                        src_ip,
+                        dst_ip
+                    )
+
+                    # Instala caminho reverso
+                    self.controller_utilities.install_paths(
+                        dest_switch_id,
+                        dest_switch_port,
+                        source_switch_id,
+                        source_switch_port,
+                        dst_ip,
+                        src_ip
+                    )
 
         actions = [parser.OFPActionOutput(out_port)]
 
