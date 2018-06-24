@@ -27,7 +27,7 @@ class ControllerUtilities(object):
                 else:
                     stack.append((next, path + [next]))
 
-        print("Caminhos disponíveis de {0} para {1}: {2}".format(src, dst, paths))
+        print("Caminhos disponiveis de {0} para {1}: {2}".format(src, dst, paths))
         return paths
 
 
