@@ -269,6 +269,7 @@ class HybridController(app_manager.RyuApp):
 
         path_with_ports = self.controller_utilities.addPortsToPath(list_path, first_port, last_port)
         print('path_with_ports = {0}'.format(path_with_ports))
+        # path_with_ports = {1: (1, 3), 3: (1, 3), 4: (1, 3), 5: (2, 3), 6: (1, 2), 7: (1, 4), 10: (2, 1)}
 
         # Lista de todos os switches que fazem parte do caminho ótimo
         switches_in_path = set().union(*list_path)
@@ -292,8 +293,9 @@ class HybridController(app_manager.RyuApp):
                 arp_tpa=ip_dst
             )
 
-            in_port = path[node][0]
-            out_port = path[node][1]
+            # path_with_ports = {1: (1, 3), 3: (1, 3), 4: (1, 3), 5: (2, 3), 6: (1, 2), 7: (1, 4), 10: (2, 1)}
+            in_port = path_with_ports[node][0]
+            out_port = path_with_ports[node][1]
             actions = [ofp_parser.OFPActionOutput(out_port)]
 
 
