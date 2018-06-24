@@ -2,12 +2,13 @@ from collections import defaultdict
 
 import time
 
-class ControllerUtilities(object):
-    # Cisco Reference bandwidth = 1 Gbps
-    REFERENCE_BW = 10000000
+# Cisco Reference bandwidth = 1 Gbps
+REFERENCE_BW = 10000000
 
-    DEFAULT_BW = 10000000
-    
+DEFAULT_BW = 10000000
+
+class ControllerUtilities(object):
+
     def __init__(self, adjacency, datapath_list, bandwidths):
         self.adjacency = adjacency
         self.datapath_list = datapath_list         # dicionário cuja chave é o ID do switch e o valor é datapath correspondente

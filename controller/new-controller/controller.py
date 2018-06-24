@@ -25,6 +25,11 @@ import os
 import random
 import time
 
+# Cisco Reference bandwidth = 1 Gbps
+REFERENCE_BW = 10000000
+
+DEFAULT_BW = 10000000
+
 
 class HybridController(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
