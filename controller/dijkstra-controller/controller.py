@@ -146,7 +146,7 @@ class ProjectController(app_manager.RyuApp):
             Q.remove(u)
 
             for p in self.switches:
-                if self.adjacency[u][p] != None:
+                if self.adjacency[u][p]:
                     w = 1
                 if distance[u] + w < distance[p]:
                     distance[p] = distance[u] + w
