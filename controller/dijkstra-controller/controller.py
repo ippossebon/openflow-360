@@ -142,7 +142,7 @@ class ProjectController(app_manager.RyuApp):
         print("Q = {0}".format(Q))
 
         while len(Q) > 0:
-            u = minimum_distance(distance, Q)
+            u = self.minimumDistance(distance, Q)
             Q.remove(u)
 
             for p in self.switches:
