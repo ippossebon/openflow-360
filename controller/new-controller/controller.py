@@ -128,7 +128,7 @@ class HybridController(app_manager.RyuApp):
     def _packet_in_handler(self, ev):
 
         if not self.controller_utilities_initialized:
-            self.controller_utilities = ControllerUtilities(self.adjacency, self.datapath_list)
+            self.controller_utilities = ControllerUtilities(self.adjacency, self.datapath_list, self.bandwidths)
             self.controller_utilities_initialized = True
 
         msg = ev.msg

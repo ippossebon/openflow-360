@@ -123,15 +123,19 @@ class ProjectController(app_manager.RyuApp):
         computation_start = time.time()
         paths = self.get_optimal_paths(src, dst)
         pw = []
+
         for path in paths:
             pw.append(self.get_path_cost(path))
             print("{0} cost = {1}".format(path, pw[len(pw) - 1]))
+
         sum_of_pw = sum(pw) * 1.0
         paths_with_ports = self.add_ports_to_paths(paths, first_port, last_port)
+
+        # Lista de todos os switches que fazem parte de algum caminho ótimo
         switches_in_paths = set().union(*paths)
 
         for node in switches_in_paths:
-
+            # Para cada switch que faz parte de algum caminho:
             dp = self.datapath_list[node]
             ofp = dp.ofproto
             ofp_parser = dp.ofproto_parser
@@ -140,10 +144,14 @@ class ProjectController(app_manager.RyuApp):
             actions = []
             i = 0
 
+            # Para cada caminho entre os caminhos ótimos
             for path in paths_with_ports:
                 if node in path:
+                    # Se o switch em questão está no caminho ótimo atual, pega portas de entrada e saída do flow
                     in_port = path[node][0]
                     out_port = path[node][1]
+
+                    
                     if (out_port, pw[i]) not in ports[in_port]:
                         ports[in_port].append((out_port, pw[i]))
                 i += 1
