@@ -138,14 +138,14 @@ class ProjectController(app_manager.RyuApp):
             previous[dpid] = None
 
         distance[src]=0
-        Q = set(switches)
+        Q = set(self.switches)
         print("Q = {0}".format(Q))
 
         while len(Q) > 0:
             u = minimum_distance(distance, Q)
             Q.remove(u)
 
-            for p in switches:
+            for p in self.switches:
                 if adjacency[u][p] != None:
                     w = 1
                 if distance[u] + w < distance[p]:
