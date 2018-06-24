@@ -60,6 +60,8 @@ class ControllerUtilities(object):
         '''
         Add the ports that connects the switches for all paths
         '''
+        print('paths = {0}'.format(paths))
+        
         paths_p = []
         for path in paths:
             p = {}
@@ -99,7 +101,11 @@ class ControllerUtilities(object):
     def getBestPath(self, src, first_port, dst, last_port):
         path = self.choosePathAccordingToHeuristic(src, dst)
 
-        path_with_ports = self.addPortsToPath([path], first_port, last_port)
+        # Gambiarra
+        list_path = []
+        list_path.append(path)
+
+        path_with_ports = self.addPortsToPath(list_path, first_port, last_port)
         print('path_with_ports = {0}'.format(path_with_ports))
 
         # Lista de todos os switches que fazem parte do caminho ótimo
