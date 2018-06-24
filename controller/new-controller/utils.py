@@ -1,4 +1,3 @@
-import numpy as np
 import time
 
 from random import randrange
@@ -87,7 +86,7 @@ class ControllerUtilities(object):
         for path in paths:
             paths_cost.append(self.getPathCost(path))
 
-        index_min = np.argmin(paths_cost)
+        index_min = paths.index(min(values.index(min(values))))
 
         return paths[index_min]
 
