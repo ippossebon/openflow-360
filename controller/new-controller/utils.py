@@ -1,11 +1,15 @@
-from collections import defaultdict
-
+import numpy as np
 import time
+
+from random import randrange
+from collections import defaultdict
 
 # Cisco Reference bandwidth = 1 Gbps
 REFERENCE_BW = 10000000
 
-DEFAULT_BW = 10000000
+FIRST_PORT = True
+MIN_HOPS = False
+RANDOM = False
 
 class ControllerUtilities(object):
 
@@ -73,22 +77,37 @@ class ControllerUtilities(object):
 
         return paths_p[0]
 
+    def getFirstPath(self, paths):
+        return paths[0]
 
-    def choosePathAccordingToHeuristic(self, src, dst):
-        paths = self.getPaths(src, dst)
-
+    def getMinimumHopsPath(self, paths):
+        # retorna o primeiro caminho com o número mínimo de hops
         paths_cost = []
 
         for path in paths:
             paths_cost.append(self.getPathCost(path))
 
-        sum_of_paths_cost = sum(paths_cost) * 1.0
+        index_min = np.argmin(paths_cost)
+
+        return paths[index_min]
+
+    def getRandomPath(self, paths):
+        index = randrange(len(paths))
+        return paths[index]
+
+    def choosePathAccordingToHeuristic(self, src, dst):
+        paths = self.getPaths(src, dst)
 
         # De acordo com a heuristica escolhida:
-        # 1. Pega o primeiro caminho
-        final_path = paths[0]
+        final_path = []
 
-        # 2. Pega caminho randomico
-        # 3. Pega primeiro caminho com menor numero de hops
+        if FIRST_PORT:
+            final_path = getFirstPath(paths)
+        else if MIN_HOPS:
+            final_path = getMinimumHopsPath(paths)
+        else if RANDOM:
+            final_path = getRandomPath(paths)
+        else:
+            print('Erro: heuristica nao escolhida. Retornou caminho vazio')
 
         return final_path

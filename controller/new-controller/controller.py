@@ -246,7 +246,7 @@ class HybridController(app_manager.RyuApp):
             datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
             actions=actions, data=data)
 
-        print('datapath={0}, buffer_id={1}, in_port={2}, actions={3}, data={4}'.format(datapath, msg.buffer_id, in_port, actions, data))
+        #print('datapath={0}, buffer_id={1}, in_port={2}, actions={3}, data={4}'.format(datapath, msg.buffer_id, in_port, actions, data))
 
         datapath.send_msg(out)
 
