@@ -67,24 +67,53 @@ class ControllerUtilities(object):
         return cost
 
 
-    def addPortsToPaths(self, paths, first_port, last_port):
+    def addPortsToPath(self, paths, first_port, last_port):
         '''
-        Retorna uma lista com as portas associadas a cada switch nos caminhos
+        Retorna uma lista com as portas associadas a cada switch no caminho
         '''
-        paths_p = []
+        p = {}
+        in_port = first_port
+
+        for s1, s2 in zip(path[:-1], path[1:]):
+            out_port = self.adjacency[s1][s2]
+            p[s1] = (in_port, out_port)
+            in_port = self.adjacency[s2][s1]
+            p[path[-1]] = (in_port, last_port)
+
+        print('[addPortsToPaths] retornou p = {0}'.format(p))
+        return p
+
+
+    def choosePathAccordingToHeuristic(self, src, dst):
+        paths = self.getOptimalPaths(src, dst)
+
+        paths_cost = []
 
         for path in paths:
-            p = {}
-            in_port = first_port
+            paths_cost.append(self.getPathCost(path))
+            print("Caminho: {0} custo = {1}".format(path, paths_cost[len(paths_cost) - 1]))
 
-            for s1, s2 in zip(path[:-1], path[1:]):
-                out_port = self.adjacency[s1][s2]
-                p[s1] = (in_port, out_port)
-                in_port = self.adjacency[s2][s1]
-            p[path[-1]] = (in_port, last_port)
-            paths_p.append(p)
+        print('paths_cost = {0}'.format(paths_cost))
 
-        return paths_p
+        sum_of_paths_cost = sum(paths_cost) * 1.0
+
+        # De acordo com a heuristica escolhida:
+        # 1. Pega o primeiro caminho
+        return path[0]
+
+        # 2. Pega caminho randomico
+        # 3. Pega caminho com menor numero de hops
+
+
+
+    def getBestPath(self, src, dst):
+        path = self.choosePathAccordingToHeuristic(src, dst)
+        path_with_ports = self.addPortsToPath(path, first_port, last_port)
+
+        # Lista de todos os switches que fazem parte do caminho ótimo
+        switches_in_paths = set().union(*paths)
+
+        print('[getBestPath] switches_in_paths = {0}'.format(switches_in_paths))
 
 
     # Instala todos os caminhos possíveis, de uma só vez.
@@ -98,22 +127,9 @@ class ControllerUtilities(object):
         ip_dst = IP do host de destino
         '''
         computation_start = time.time()
-        paths = self.getOptimalPaths(src, dst)
+        chosen_path = self.getBestPath()
 
-        # Custo de cada caminho associado
-        paths_cost = []
-
-        for path in paths:
-            paths_cost.append(self.getPathCost(path))
-            print("Caminho: {0} custo = {1}".format(path, paths_cost[len(paths_cost) - 1]))
-
-        print('paths_cost = {0}'.format(paths_cost))
-
-        sum_of_paths_cost = sum(paths_cost) * 1.0
-        paths_with_ports = self.addPortsToPaths(paths, first_port, last_port)
-
-        # Lista de todos os switches que fazem parte de algum caminho ótimo
-        switches_in_paths = set().union(*paths)
+        exit(1)
 
         for node in switches_in_paths:
             # Para cada switch que faz parte de algum caminho:
@@ -137,7 +153,7 @@ class ControllerUtilities(object):
                         ports[in_port].append((out_port, paths_cost[i]))
                 i += 1
 
-            # ports{} é um dicionário que com chave in_port e o valor associado corresponde
+            # ports{} é um dicionário com chave in_port e o valor associado corresponde
             # a out_port e o custo do caminho que fará ao sair por essa porta.
             for in_port in ports:
                 match_ip = ofp_parser.OFPMatch(
@@ -151,9 +167,8 @@ class ControllerUtilities(object):
                     arp_tpa=ip_dst
                 )
 
-                # Pega todos os caminhos disponíveis, considerando que chegou pela porta in_port
+                # out_ports contém as portas pelas quais pode sair e o custo do caminho associado
                 out_ports = ports[in_port]
-                # print out_ports
 
                 print("out_ports = {0}".format(out_ports))
 
