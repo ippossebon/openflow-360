@@ -101,11 +101,11 @@ class ControllerUtilities(object):
         final_path = []
 
         if FIRST_PORT:
-            final_path = getFirstPath(paths)
+            final_path = self.getFirstPath(paths)
         elif MIN_HOPS:
-            final_path = getMinimumHopsPath(paths)
+            final_path = self.getMinimumHopsPath(paths)
         elif RANDOM:
-            final_path = getRandomPath(paths)
+            final_path = self.getRandomPath(paths)
         else:
             print('Erro: heuristica nao escolhida. Retornou caminho vazio')
 
