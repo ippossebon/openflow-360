@@ -176,9 +176,9 @@ class ProjectController(app_manager.RyuApp):
         in_port = first_port
 
         for s1, s2 in zip(path[:-1],path[1:]):
-            out_port = adjacency[s1][s2]
+            out_port = self.adjacency[s1][s2]
             r.append((s1,in_port,out_port))
-            in_port = adjacency[s2][s1]
+            in_port = self.adjacency[s2][s1]
 
         r.append((dst,in_port,final_port))
         # r is the minimum path
