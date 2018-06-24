@@ -91,7 +91,7 @@ class ControllerUtilities(object):
 
         # De acordo com a heuristica escolhida:
         # 1. Pega o primeiro caminho
-        print('[choosePathAccordingToHeuristic] paths = {0}'.format(0))
+        print('[choosePathAccordingToHeuristic] paths = {0}'.format(paths))
         return paths
 
         # 2. Pega caminho randomico
