@@ -183,7 +183,7 @@ class HybridController(app_manager.RyuApp):
                 dest_switch_port = h2[1]
 
                 # Retorna a porta para qual deve ser enviado o flow
-                out_port = self.controller_utilities.installPaths(
+                out_port = self.installPaths(
                     source_switch_id,
                     source_switch_port,
                     dest_switch_id,
@@ -193,7 +193,7 @@ class HybridController(app_manager.RyuApp):
                 )
 
                 # Instala caminho reverso
-                self.controller_utilities.installPaths(
+                self.installPaths(
                     dest_switch_id,
                     dest_switch_port,
                     source_switch_id,
@@ -216,7 +216,7 @@ class HybridController(app_manager.RyuApp):
                     dest_switch_port = h2[1]
 
                     # Retorna a porta para qual deve ser enviado o flow
-                    out_port = self.controller_utilities.installPaths(
+                    out_port = self.installPaths(
                         source_switch_id,
                         source_switch_port,
                         dest_switch_id,
@@ -226,7 +226,7 @@ class HybridController(app_manager.RyuApp):
                     )
 
                     # Instala caminho reverso
-                    self.controller_utilities.installPaths(
+                    self.installPaths(
                         dest_switch_id,
                         dest_switch_port,
                         source_switch_id,
@@ -245,3 +245,73 @@ class HybridController(app_manager.RyuApp):
             datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
             actions=actions, data=data)
         datapath.send_msg(out)
+
+
+    # Instala todos os caminhos possíveis, de uma só vez.
+    def installPaths(self, src, first_port, dst, last_port, ip_src, ip_dst):
+        '''
+        src = switch de origem
+        first_port = porta que conecta o switch de origem ao host de origem
+        dst = switch de destino
+        last_port = porta que conecta o switch de destino ao host de destino
+        ip_src = IP do host de origem
+        ip_dst = IP do host de destino
+        '''
+        computation_start = time.time()
+        path = self.controller_utilities_initialized.choosePathAccordingToHeuristic(src, dst)
+
+        print('[installPaths] chosen path = {0}'.format(path))
+
+        # --- Gambiarra ---
+        list_path = []
+        list_path.append(path)
+        # -------
+
+        path_with_ports = self.controller_utilities_initialized.addPortsToPath(list_path, first_port, last_port)
+        print('path_with_ports = {0}'.format(path_with_ports))
+
+        # Lista de todos os switches que fazem parte do caminho ótimo
+        switches_in_path = set().union(*list_path)
+
+        print('[getBestPath] switches_in_path = {0}'.format(switches_in_path))
+
+        for node in switches_in_path:
+            # Para cada switch que faz parte do caminho:
+            dp = self.datapath_list[node]
+            ofp = dp.ofproto
+            ofp_parser = dp.ofproto_parser
+
+            match_ip = ofp_parser.OFPMatch(
+                eth_type=0x0800,
+                ipv4_src=ip_src,
+                ipv4_dst=ip_dst
+            )
+            match_arp = ofp_parser.OFPMatch(
+                eth_type=0x0806,
+                arp_spa=ip_src,
+                arp_tpa=ip_dst
+            )
+
+            in_port = path[node][0]
+            out_port = path[node][1]
+            actions = [ofp_parser.OFPActionOutput(out_port)]
+
+
+            self.addFlow(dp, 32768, match_ip, actions)
+            self.addFlow(dp, 1, match_arp, actions)
+
+
+    def addFlow(self, datapath, priority, match, actions, buffer_id=None):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+                                    priority=priority, match=match,
+                                    instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+                                    match=match, instructions=inst)
+        datapath.send_msg(mod)

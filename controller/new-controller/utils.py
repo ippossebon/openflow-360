@@ -60,8 +60,6 @@ class ControllerUtilities(object):
         '''
         Add the ports that connects the switches for all paths
         '''
-        print('paths = {0}'.format(paths))
-
         paths_p = []
         for path in paths:
             p = {}
@@ -83,9 +81,6 @@ class ControllerUtilities(object):
 
         for path in paths:
             paths_cost.append(self.getPathCost(path))
-            print("Caminho: {0} custo = {1}".format(path, paths_cost[len(paths_cost) - 1]))
-
-        print('paths_cost = {0}'.format(paths_cost))
 
         sum_of_paths_cost = sum(paths_cost) * 1.0
 
@@ -97,84 +92,3 @@ class ControllerUtilities(object):
         # 3. Pega primeiro caminho com menor numero de hops
 
         return final_path
-
-
-
-    # Instala todos os caminhos possíveis, de uma só vez.
-    def installPaths(self, src, first_port, dst, last_port, ip_src, ip_dst):
-        '''
-        src = switch de origem
-        first_port = porta que conecta o switch de origem ao host de origem
-        dst = switch de destino
-        last_port = porta que conecta o switch de destino ao host de destino
-        ip_src = IP do host de origem
-        ip_dst = IP do host de destino
-        '''
-        computation_start = time.time()
-        path = self.choosePathAccordingToHeuristic(src, dst)
-
-        # --- Gambiarra ---
-        list_path = []
-        list_path.append(path)
-        # -------
-
-        path_with_ports = self.addPortsToPath(list_path, first_port, last_port)
-        print('path_with_ports = {0}'.format(path_with_ports))
-
-        # Lista de todos os switches que fazem parte do caminho ótimo
-        switches_in_path = set().union(*list_path)
-
-        print('[getBestPath] switches_in_path = {0}'.format(switches_in_path))
-
-        exit(1)
-
-        for node in switches_in_paths:
-            # Para cada switch que faz parte de algum caminho:
-            dp = self.datapath_list[node]
-            ofp = dp.ofproto
-            ofp_parser = dp.ofproto_parser
-
-            # ports[in_port] = (out_port, custo associado) -> Se entrou pela in_port, pode sair pela out_port com custo X
-            ports = defaultdict(list)
-            actions = []
-            i = 0
-
-            # Para cada caminho entre os caminhos ótimos
-            for path in paths_with_ports:
-                if node in path:
-                    # Se o switch em questão está no caminho ótimo atual, pega portas de entrada e saída do flow
-                    in_port = path[node][0]
-                    out_port = path[node][1]
-
-                    if (out_port, paths_cost[i]) not in ports[in_port]:
-                        ports[in_port].append((out_port, paths_cost[i]))
-                i += 1
-
-            # ports{} é um dicionário com chave in_port e o valor associado corresponde
-            # a out_port e o custo do caminho que fará ao sair por essa porta.
-            for in_port in ports:
-                match_ip = ofp_parser.OFPMatch(
-                    eth_type=0x0800,
-                    ipv4_src=ip_src,
-                    ipv4_dst=ip_dst
-                )
-                match_arp = ofp_parser.OFPMatch(
-                    eth_type=0x0806,
-                    arp_spa=ip_src,
-                    arp_tpa=ip_dst
-                )
-
-                # out_ports contém as portas pelas quais pode sair e o custo do caminho associado
-                out_ports = ports[in_port]
-
-                print("out_ports = {0}".format(out_ports))
-
-                if len(out_ports) == 1:
-                    actions = [ofp_parser.OFPActionOutput(out_ports[0][0])]
-
-                    self.add_flow(dp, 32768, match_ip, actions)
-                    self.add_flow(dp, 1, match_arp, actions)
-
-
-        print("Finished in {0}".format(time.time() - computation_start))
-        exit(1)
