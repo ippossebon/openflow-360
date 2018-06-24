@@ -235,7 +235,9 @@ class HybridController(app_manager.RyuApp):
                         src_ip
                     )
 
+        # Trata pacotes que nao sao  ARP
         actions = [parser.OFPActionOutput(out_port)]
+        print('datapath={0}, buffer_id={1}, in_port={2}, actions={3}, data={4}'.format(datapath, msg.buffer_id, in_port, actions, data))
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
@@ -244,6 +246,7 @@ class HybridController(app_manager.RyuApp):
         out = parser.OFPPacketOut(
             datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
             actions=actions, data=data)
+
         datapath.send_msg(out)
 
 
