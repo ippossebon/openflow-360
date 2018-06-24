@@ -14,17 +14,6 @@ class ControllerUtilities(object):
         self.datapath_list = datapath_list         # dicionário cuja chave é o ID do switch e o valor é datapath correspondente
         self.bandwidths = bandwidths
 
-    def getOptimalPaths(self, src, dst):
-        # Retorna os 2 primeiros caminhos possiveis
-        paths = self.getPaths(src, dst)
-        optimal_paths = []
-
-        optimal_paths.append(paths[0])
-        optimal_paths.append(paths[1])
-
-        return optimal_paths
-
-
     def getPaths(self, src, dst):
         '''
         Get all paths from src to dst using DFS algorithm
@@ -67,7 +56,7 @@ class ControllerUtilities(object):
         return cost
 
 
-    def addPortsToPath(self, paths, first_port, last_port):
+    def addPortsToPath(self, path, first_port, last_port):
         '''
         Retorna uma lista com as portas associadas a cada switch no caminho
         '''
@@ -85,7 +74,7 @@ class ControllerUtilities(object):
 
 
     def choosePathAccordingToHeuristic(self, src, dst):
-        paths = self.getOptimalPaths(src, dst)
+        paths = self.getPaths(src, dst)
 
         paths_cost = []
 
@@ -106,7 +95,7 @@ class ControllerUtilities(object):
 
 
 
-    def getBestPath(self, src, dst):
+    def getBestPath(self, src, first_port, dst, last_port):
         path = self.choosePathAccordingToHeuristic(src, dst)
         path_with_ports = self.addPortsToPath(path, first_port, last_port)
 
@@ -127,7 +116,7 @@ class ControllerUtilities(object):
         ip_dst = IP do host de destino
         '''
         computation_start = time.time()
-        chosen_path = self.getBestPath()
+        chosen_path = self.getBestPath(src, first_port, dst, last_port)
 
         exit(1)
 
