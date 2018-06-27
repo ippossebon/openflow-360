@@ -7,8 +7,8 @@ from collections import defaultdict
 REFERENCE_BW = 10000000
 
 FIRST_PORT = False
-MIN_HOPS = False
-RANDOM = True
+MIN_HOPS = True
+RANDOM = False
 
 class ControllerUtilities(object):
 
