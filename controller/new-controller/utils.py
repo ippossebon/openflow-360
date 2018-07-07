@@ -16,7 +16,7 @@ class ControllerUtilities(object):
         self.adjacency = adjacency
         self.datapath_list = datapath_list         # dicionário cuja chave é o ID do switch e o valor é datapath correspondente
         self.bandwidths = bandwidths
-        self.last_used_path = defaultdict(adjacency)
+        self.last_used_path = defaultdict()
         # testar se isso ta funcionando
 
     def getPaths(self, src, dst):
