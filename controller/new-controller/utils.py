@@ -83,7 +83,7 @@ class ControllerUtilities(object):
     def isNewPath(self, src, dst, path):
         print('dentro da isNewPath')
 
-        if not self.last_used_path[src]:
+        if self.last_used_path[src] == None:
             print('nao existe, cria')
             self.last_used_path[src] = {}
             print('self.last_used_path[src] = {0}'.format(self.last_used_path[src]))
