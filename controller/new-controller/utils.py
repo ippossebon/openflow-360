@@ -81,6 +81,8 @@ class ControllerUtilities(object):
 
 
     def isNewPath(self, src, dst, path):
+        print('dentro da isNewPath')
+
         if not self.last_used_path[src]:
             print('nao existe, cria')
             self.last_used_path[src] = {}
@@ -103,6 +105,8 @@ class ControllerUtilities(object):
                 self.last_used_path[src][dst] = path
                 print('guardou o caminho atual: {0}'.format(self.last_used_path[src][dst]))
                 return path
+            else:
+                print('nao eh novo, procura proximo')
 
 
     def getMinimumHopsPath(self, src, dst, paths):
@@ -116,7 +120,7 @@ class ControllerUtilities(object):
 
         candidate_path = paths[index_min]
 
-        while not isNewPath(src, dst, candidate_path):
+        while not self.isNewPath(src, dst, candidate_path):
             paths.remove(candidate_path)
             candidate_path = paths[index_min]
 
@@ -126,7 +130,7 @@ class ControllerUtilities(object):
         index = randrange(len(paths))
         candidate_path = paths[index_min]
 
-        while not isNewPath(src, dst, candidate_path):
+        while not self.isNewPath(src, dst, candidate_path):
             paths.remove(candidate_path)
             index = randrange(len(paths))
             candidate_path = paths[index_min]
