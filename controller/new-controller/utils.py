@@ -87,28 +87,16 @@ class ControllerUtilities(object):
         if dst not in self.last_used_path[src].keys():
             self.last_used_path[src][dst] = []
 
-        print('self.last_used_path[src][dst] = {0}'.format(self.last_used_path[src][dst]))
-
         if self.last_used_path[src][dst] == path:
-            print('Caminho ja foi utilizado')
             return False
 
-        print('caminho eh novo')
         return True
 
     def getFirstUnusedPath(self, src, dst, paths):
-        print('self.last_used_path = {0}'.format(self.last_used_path))
-        print('Procurando novo caminho...')
-
         for path in paths:
-            print('path = {0}'.format(path))
             if self.isNewPath(src, dst, path):
                 self.last_used_path[src][dst] = path
-                print('guardou o caminho atual: {0}'.format(self.last_used_path[src][dst]))
                 return path
-            else:
-                print('nao eh novo, procura proximo')
-
 
     def getMinimumHopsPath(self, src, dst, paths):
         # retorna o primeiro caminho com o número mínimo de hops
