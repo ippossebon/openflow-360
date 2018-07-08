@@ -83,12 +83,12 @@ class ControllerUtilities(object):
     def isNewPath(self, src, dst, path):
         print('dentro da isNewPath')
 
-        if self.last_used_path[src][dst] == None:
-            self.last_used_path[src][dst] = [] 
+        if self.last_used_path[str(src)][str(dst)] == None:
+            self.last_used_path[str(src)][str(dst)] = []
 
-        print('self.last_used_path[src] = {0}'.format(self.last_used_path[src][dst]))
-
-        if self.last_used_path[src][dst] == path:
+        print('self.last_used_path[str(src)][str(dst)] = {0}'.format(self.last_used_path[str(src)][str(dst)]))
+        
+        if self.last_used_path[str(src)][str(dst)] == path:
             print('Caminho ja foi utilizado')
             return False
 
@@ -102,8 +102,8 @@ class ControllerUtilities(object):
         for path in paths:
             print('path = {0}'.format(path))
             if self.isNewPath(src, dst, path):
-                self.last_used_path[src][dst] = path
-                print('guardou o caminho atual: {0}'.format(self.last_used_path[src][dst]))
+                self.last_used_path[str(src)][str(dst)] = path
+                print('guardou o caminho atual: {0}'.format(self.last_used_path[str(src)][str(dst)]))
                 return path
             else:
                 print('nao eh novo, procura proximo')
