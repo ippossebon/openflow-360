@@ -88,8 +88,8 @@ class ControllerUtilities(object):
         return True
 
     def getFirstUnusedPath(self, src, dst, paths):
-        print('self.last_used_path = {0}'.format(last_used_path))
-        
+        print('self.last_used_path = {0}'.format(self.last_used_path))
+
         for i in range(0, len(paths)):
             candidate_path = paths[i]
 
