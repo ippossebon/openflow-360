@@ -117,12 +117,12 @@ class ControllerUtilities(object):
 
     def getRandomPath(self, src, dst, paths):
         index = randrange(len(paths))
-        candidate_path = paths[index_min]
+        candidate_path = paths[index]
 
         while not self.isNewPath(src, dst, candidate_path):
             paths.remove(candidate_path)
             index = randrange(len(paths))
-            candidate_path = paths[index_min]
+            candidate_path = paths[index]
 
         return candidate_path
 
