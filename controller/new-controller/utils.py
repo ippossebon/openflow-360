@@ -95,14 +95,14 @@ class ControllerUtilities(object):
 
     def getFirstUnusedPath(self, src, dst, paths):
         print('self.last_used_path = {0}'.format(self.last_used_path))
+        print('Procurando novo caminho...')
 
-        for i in range(0, len(paths)):
-            candidate_path = paths[i]
-
-            if self.isNewPath(src, dst, candidate_path):
-                self.last_used_path[src][dst] = candidate_path
+        for path in paths:
+            print('path = {0}'.format(path))
+            if self.isNewPath(src, dst, path):
+                self.last_used_path[src][dst] = path
                 print('guardou o caminho atual: {0}'.format(self.last_used_path[src][dst]))
-                return candidate_path
+                return path
 
 
     def getMinimumHopsPath(self, src, dst, paths):
