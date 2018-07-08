@@ -16,7 +16,7 @@ class ControllerUtilities(object):
         self.adjacency = adjacency
         self.datapath_list = datapath_list         # dicionário cuja chave é o ID do switch e o valor é datapath correspondente
         self.bandwidths = bandwidths
-        self.last_used_path = defaultdict(dict)
+        self.last_used_path = {}
         # testar se isso ta funcionando
 
     def getPaths(self, src, dst):
@@ -81,6 +81,9 @@ class ControllerUtilities(object):
 
 
     def isNewPath(self, src, dst, path):
+        if not self.last_used_path[src]:
+            self.last_used_path[src] = {}
+
         if self.last_used_path[src][dst] == path:
             print('Caminho ja foi utilizado')
             return False
