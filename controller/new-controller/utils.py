@@ -83,6 +83,7 @@ class ControllerUtilities(object):
     def isNewPath(self, src, dst, path):
         if self.last_used_path[src][dst]:
             if self.last_used_path[src][dst] == path:
+                print('Caminho ja foi utilizado')
                 return False
 
         return True
